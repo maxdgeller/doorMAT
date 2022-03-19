@@ -12,5 +12,5 @@ in the android studio project, navigate to Git -> Update Project, select 'Merge 
 ## to apply local changes to the repo (after making changes locally)
 Git -> Commit, and click 'Commit and Push...'
 
-#misc
+# misc
 if you think of anything that should be added or changed in this readme, either tell me via discord, or create a new branch or fork, commit the changes there and make a pull request
