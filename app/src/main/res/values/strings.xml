@@ -1,0 +1,16 @@
+<resources>
+    <string name="app_name">doorMAT_Skeleton</string>
+    <string name="menu_drawer_open">Drawer Open</string>
+    <string name="menu_drawer_close">Drawer Close</string>
+    <string name="login">Login</string>
+    <string name="sign_up1">Sign Up</string>
+    <string name="username">Username</string>
+    <string name="password">Password</string>
+    <string name="enter_details">Enter Details</string>
+    <string name="enter_username">enter username</string>
+    <string name="enter_password">enter password</string>
+    <string name="enter_email">enter email</string>
+    <string name="sign_up">Sign Up</string>
+    <string name="clear">Clear</string>
+    <string name="place">Place</string>
+</resources>
