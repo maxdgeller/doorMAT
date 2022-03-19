@@ -7,9 +7,9 @@
 6. in the 'Trust Gradle Project?' dialog box, click Trust Project. or click stay in safe mode. i don't know the implications of either. lol.
 
 # if the following instructions don't work, they probably will once i add you as a collaborator
-## to apply remote changes to local project (before making changes locally)
+## to apply others' remote changes to your local project (before making changes locally)
 in the android studio project, navigate to Git -> Update Project, select 'Merge incoming changes int othe current branch'
-## to apply local changes to the repo (after making changes locally)
+## to apply your local changes to the repo
 Git -> Commit, and click 'Commit and Push...'
 
 # misc
