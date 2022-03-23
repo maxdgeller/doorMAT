@@ -12,6 +12,7 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.os.*;
 import android.widget.Button;
+import android.widget.Toast;
 
 import com.example.doormat_skeleton.Helpers.CameraPermissionHelper;
 import com.example.doormat_skeleton.Helpers.SnackbarHelper;
@@ -52,6 +53,16 @@ public class ViewMode extends AppCompatActivity {
     private FloatingActionButton back_btn;
     private Session session;
 
+    private enum AppAnchorState {
+        NONE,
+        HOSTING,
+        HOSTED
+    }
+
+    private AppAnchorState appAnchorState = AppAnchorState.NONE;
+    private SnackbarHelper snackbarHelper = new SnackbarHelper();
+    private final StoreManager storeManager = new StoreManager();
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -83,18 +94,28 @@ public class ViewMode extends AppCompatActivity {
                 });
 
         arFragment = (CustomArFragment) getSupportFragmentManager().findFragmentById(R.id.ux_fragment);
+        arFragment.getArSceneView().getScene().addOnUpdateListener(this::onUpdateFrame);
 
 
         assert arFragment != null;
         arFragment.setOnTapArPlaneListener(
                 (HitResult hitResult, Plane plane, MotionEvent motionEvent) -> {
-                    if (plane.getType() != Plane.Type.HORIZONTAL_UPWARD_FACING) {
+                    if (plane.getType() != Plane.Type.HORIZONTAL_UPWARD_FACING ||
+                            appAnchorState != AppAnchorState.NONE) {
                         return;
                     }
 
-                    Anchor anchor = hitResult.createAnchor();
+
+                    Anchor anchor = arFragment.getArSceneView().getSession().hostCloudAnchor(hitResult.createAnchor());
 
                     setCloudAnchor(anchor);
+
+                    appAnchorState = AppAnchorState.HOSTING;
+                    Toast.makeText(this,"Now Hosting...", Toast.LENGTH_LONG).show();
+                    snackbarHelper.showMessage(this, "Now hosting...");
+
+
+
 
                     AnchorNode anchorNode = new AnchorNode(anchor);
                     anchorNode.setParent(arFragment.getArSceneView().getScene());
@@ -107,6 +128,34 @@ public class ViewMode extends AppCompatActivity {
         );
     }
 
+    private void onUpdateFrame(FrameTime frameTime) {
+        checkUpdatedAnchor();
+    }
+
+
+
+    private synchronized void checkUpdatedAnchor(){
+        if(appAnchorState != AppAnchorState.HOSTING){
+            return;
+        }
+        Anchor.CloudAnchorState cloudAnchorState = cloudAnchor.getCloudAnchorState();
+        if(cloudAnchorState.isError()){
+            snackbarHelper.showMessageWithDismiss(this, "Error hosting... " +
+                    cloudAnchorState);
+            Toast.makeText(this,"Error Hosting...", Toast.LENGTH_LONG).show();
+            appAnchorState = AppAnchorState.NONE;
+        }
+        else if(cloudAnchorState == Anchor.CloudAnchorState.SUCCESS){
+            int shortCode = storeManager.nextShortCode(this);
+            storeManager.storeUsingShortCode(this, shortCode, cloudAnchor.getCloudAnchorId());
+
+            snackbarHelper.showMessageWithDismiss(this, "Anchor hosted. Cloud ID: " +
+                    shortCode);
+            Toast.makeText(this,"Anchor hosted. Cloud ID: " + shortCode, Toast.LENGTH_LONG).show();
+            appAnchorState = AppAnchorState.HOSTED;
+        }
+    }
+
 
     private void setCloudAnchor(Anchor newAnchor){
         if(cloudAnchor != null){
@@ -114,6 +163,8 @@ public class ViewMode extends AppCompatActivity {
         }
 
         cloudAnchor = newAnchor;
+        appAnchorState = AppAnchorState.NONE;
+        snackbarHelper.hide(this);
 
     }
 
