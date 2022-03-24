@@ -8,13 +8,18 @@ import androidx.core.content.ContextCompat;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
+import android.app.Activity;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
 import android.location.Location;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.preference.PreferenceManager;
 import android.util.Log;
 import android.view.View;
 import android.widget.AdapterView;
@@ -34,6 +39,8 @@ import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.maps.model.CameraPosition;
+import com.google.android.gms.maps.model.CircleOptions;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
@@ -51,11 +58,22 @@ public class MapActivity extends DrawerBaseActivity implements OnMapReadyCallbac
     LocationRequest mLocationRequest;
     Location mLastLocation;
     FusedLocationProviderClient mFusedLocationClient;
+    boolean isPlaced = false;
+    float CIRCLE_RADIUS = 50;
+    float DEFAULT_LATITUDE;
+    float DEFAULT_LONGITUDE;
+    float DEFAULT_ZOOM;
+    SharedPreferences userPos;
+    private int VIEW_MODE_REQUEST_CODE = 1;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_map);
+
+        userPos = getSharedPreferences("UserPosition", Context.MODE_PRIVATE);
+
 
         //Set FusedLocation
         mFusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
@@ -84,6 +102,19 @@ public class MapActivity extends DrawerBaseActivity implements OnMapReadyCallbac
         mLocationRequest.setFastestInterval(3500);
         mLocationRequest.setPriority(LocationRequest.PRIORITY_BALANCED_POWER_ACCURACY);
 
+
+        SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
+        double longitude = sharedPref.getFloat("longitude", DEFAULT_LONGITUDE);
+        double latitude = sharedPref.getFloat("latitude", DEFAULT_LATITUDE);
+        float zoom = sharedPref.getFloat("zoom", DEFAULT_ZOOM);
+        LatLng startPosition = new LatLng(latitude, longitude);
+        CameraPosition cameraPosition = new CameraPosition.Builder()
+                .target(startPosition)
+                .zoom(zoom)
+                .build();
+        mGoogleMap.moveCamera(CameraUpdateFactory.newCameraPosition(cameraPosition));
+
+
         if (ContextCompat.checkSelfPermission(this,
                 Manifest.permission.ACCESS_FINE_LOCATION)
                 == PackageManager.PERMISSION_GRANTED) {
@@ -94,6 +125,7 @@ public class MapActivity extends DrawerBaseActivity implements OnMapReadyCallbac
             //Request Location Permission
             checkLocationPermission();
         }
+
     }
 
     LocationCallback mLocationCallback = new LocationCallback() {
@@ -106,9 +138,12 @@ public class MapActivity extends DrawerBaseActivity implements OnMapReadyCallbac
 
                 //Place current location marker
                 LatLng latLng = new LatLng(location.getLatitude(), location.getLongitude());
+                mLastLocation = location;
+
 
                 //move map camera
                 mGoogleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng, 20));
+
             }
         }
     };
@@ -170,7 +205,55 @@ public class MapActivity extends DrawerBaseActivity implements OnMapReadyCallbac
         }
     }
 
+    @Override
+    protected void onStop() {
+        super.onStop();
 
+        CameraPosition mMyCam = mGoogleMap.getCameraPosition();
+        double longitude = mMyCam.target.longitude;
+        double latitude = mMyCam.target.latitude;
+        float zoom = mMyCam.zoom;
+
+        SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
+        SharedPreferences.Editor editor = sharedPref.edit();
+        editor.putFloat("longitude", (float)longitude);
+        editor.putFloat("latitude", (float)latitude);
+        editor.putFloat("zoom", zoom);
+        editor.apply();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+
+        SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
+        double longitude = sharedPref.getFloat("longitude", DEFAULT_LONGITUDE);
+        double latitude = sharedPref.getFloat("latitude", DEFAULT_LATITUDE);
+
+        LatLng latLng = new LatLng(latitude, longitude);
+
+        if(isPlaced){
+            addMarker(latLng);
+            addCircle(latLng, CIRCLE_RADIUS);
+        }
+
+    }
+
+    private void addMarker(LatLng latLng){
+        MarkerOptions markerOptions = new MarkerOptions().position(latLng);
+        mGoogleMap.addMarker(markerOptions);
+
+    }
+
+    private void addCircle(LatLng latLng, float radius){
+        CircleOptions circleOptions = new CircleOptions();
+        circleOptions.center(latLng);
+        circleOptions.radius(radius);
+        circleOptions.strokeColor(Color.argb(255,0,0, 255));
+        circleOptions.fillColor(Color.argb(65,0,0, 255));
+        circleOptions.strokeWidth(4);
+        mGoogleMap.addCircle(circleOptions);
+    }
 
     // Leaving old code commented out for now, will remove later if location tracking is working
 
@@ -247,7 +330,22 @@ public class MapActivity extends DrawerBaseActivity implements OnMapReadyCallbac
     public void launchViewMode(View view) {
 
         Intent i = new Intent(MapActivity.this, ViewMode.class);
-        startActivity(i);
+        startActivityForResult(i, VIEW_MODE_REQUEST_CODE);
 
     }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+
+        if (requestCode == VIEW_MODE_REQUEST_CODE) {
+            if(resultCode == Activity.RESULT_OK){
+                isPlaced = true;
+            }
+            if (resultCode == Activity.RESULT_CANCELED) {
+                isPlaced = false;
+            }
+        }
+    }
+
 }

@@ -4,7 +4,10 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 
 
+import android.app.Activity;
+import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
@@ -50,8 +53,12 @@ public class ViewMode extends AppCompatActivity {
     private ModelRenderable sphereRenderable;
     private Anchor cloudAnchor;
     private Button clear;
+    private Button finish;
     private FloatingActionButton back_btn;
     private Session session;
+    private boolean isPlaced;
+    SharedPreferences markerPreferences;
+
 
     private enum AppAnchorState {
         NONE,
@@ -64,27 +71,40 @@ public class ViewMode extends AppCompatActivity {
     private final StoreManager storeManager = new StoreManager();
 
 
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_view_mode);
-
+        markerPreferences = getSharedPreferences("MarkerValue", Context.MODE_PRIVATE);
 
         Button clear = findViewById(R.id.clear);
+        Button finish = findViewById(R.id.finish);
+        finish.setVisibility(View.GONE);
         FloatingActionButton back_btn = findViewById(R.id.back_btn);
 
         clear.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 setCloudAnchor(null);
+                isPlaced = false;
             }
         });
 
         back_btn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                Intent intent = new Intent(ViewMode.this, MapActivity.class);
-                startActivity(intent);
+                if(isPlaced == true) {
+                    Intent intent = new Intent(ViewMode.this, MapActivity.class);
+                    intent.putExtra("isPlaced", isPlaced);
+                    setResult(Activity.RESULT_OK, intent);
+                    finish();
+                }
+                else{
+                    Intent intent = new Intent(ViewMode.this, MapActivity.class);
+                    setResult(Activity.RESULT_CANCELED, intent);
+                    finish();
+                }
             }
         });
 
@@ -123,9 +143,11 @@ public class ViewMode extends AppCompatActivity {
                     TransformableNode sphere = new TransformableNode(arFragment.getTransformationSystem());
                     sphere.setParent(anchorNode);
                     sphere.setRenderable(sphereRenderable);
+                    isPlaced = true;
                     sphere.select();
                 }
         );
+
     }
 
     private void onUpdateFrame(FrameTime frameTime) {
@@ -194,6 +216,5 @@ public class ViewMode extends AppCompatActivity {
     }
 
 }
-
 
 
