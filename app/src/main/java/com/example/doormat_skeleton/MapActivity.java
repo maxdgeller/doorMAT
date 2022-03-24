@@ -30,6 +30,7 @@ import android.widget.Toast;
 
 import com.example.doormat_skeleton.databinding.ActivityMapBinding;
 import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.GeofencingClient;
 import com.google.android.gms.location.LocationCallback;
 import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationResult;
@@ -50,9 +51,9 @@ import com.google.ar.core.ArCoreApk;
 
 import java.util.List;
 
-public class MapActivity extends DrawerBaseActivity implements OnMapReadyCallback{
+public class MapActivity extends DrawerBaseActivity implements OnMapReadyCallback {
 
-    //Initalize variables
+    //Initialize variables
     GoogleMap mGoogleMap;
     SupportMapFragment mapFrag;
     LocationRequest mLocationRequest;
@@ -66,6 +67,8 @@ public class MapActivity extends DrawerBaseActivity implements OnMapReadyCallbac
     SharedPreferences userPos;
     private int VIEW_MODE_REQUEST_CODE = 1;
 
+    //Initialize geofencing variables
+    private GeofencingClient geofencingClient;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -81,6 +84,9 @@ public class MapActivity extends DrawerBaseActivity implements OnMapReadyCallbac
         //Initialize map fragment
         mapFrag = (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map);
         mapFrag.getMapAsync(this);
+
+        //getGeofencingClient returns a GeofencingClient instance
+        geofencingClient = LocationServices.getGeofencingClient(this);
     }
 
     @Override
@@ -234,7 +240,7 @@ public class MapActivity extends DrawerBaseActivity implements OnMapReadyCallbac
 
         if(isPlaced){
             addMarker(latLng);
-            addCircle(latLng, CIRCLE_RADIUS);
+            addCircle(latLng, CIRCLE_RADIUS, "blue");
         }
 
     }
@@ -252,6 +258,23 @@ public class MapActivity extends DrawerBaseActivity implements OnMapReadyCallbac
         circleOptions.strokeColor(Color.argb(255,0,0, 255));
         circleOptions.fillColor(Color.argb(65,0,0, 255));
         circleOptions.strokeWidth(4);
+        mGoogleMap.addCircle(circleOptions);
+    }
+
+    private void addCircle(LatLng latLng, float radius, String colorString) {
+        //per https://developer.android.com/reference/android/graphics/Color.html, accepted color strings are:
+        //red, blue, green, black, white, gray, cyan, magenta, yellow, lightgray, darkgray, aqua, fuchsia, lime, maroon, navy, olive, purple, silver, teal
+        //or hexadecimal strings of the format #RRGGBB or #AARRGGBB
+
+        CircleOptions circleOptions = new CircleOptions();
+        circleOptions.center(latLng);
+        circleOptions.radius(radius);
+
+        int color = Color.parseColor(colorString);
+        circleOptions.strokeColor(Color.argb(255, Color.red(color), Color.green(color), Color.blue(color)));
+        circleOptions.fillColor(Color.argb(55, Color.red(color), Color.green(color), Color.blue(color)));
+        circleOptions.strokeWidth(5);
+
         mGoogleMap.addCircle(circleOptions);
     }
 
