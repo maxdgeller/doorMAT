@@ -68,7 +68,6 @@ public class MapActivity extends DrawerBaseActivity implements OnMapReadyCallbac
     SharedPreferences userPos;
 
     private int VIEW_MODE_REQUEST_CODE = 1;
-//    private final int PERMISSIONS_REQUEST_LOCATION = 101;
     private final int FINE_LOCATION_ACCESS_REQUEST_CODE = 10001;
     private final int BACKGROUND_LOCATION_ACCESS_REQUEST_CODE = 10002;
 
@@ -276,12 +275,6 @@ public class MapActivity extends DrawerBaseActivity implements OnMapReadyCallbac
     protected void onResume() {
         super.onResume();
 
-
-//        checkLocationPermission();
-//        if (Build.VERSION.SDK_INT >= 29) {
-//            checkBackgroundLocationPermission();
-//        }
-
         SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
         double longitude = sharedPref.getFloat("longitude", DEFAULT_LONGITUDE);
         double latitude = sharedPref.getFloat("latitude", DEFAULT_LATITUDE);
@@ -297,6 +290,7 @@ public class MapActivity extends DrawerBaseActivity implements OnMapReadyCallbac
             addGeofences((HashSet<LatLng>) nearbyAnchorLatLngs);
         }
 
+        //i think we won't need this code anymore
 //        if (isPlaced) {
 //            addMarker(latLng);
 //            addCircle(latLng, GEOFENCE_RADIUS, "blue");
@@ -305,7 +299,7 @@ public class MapActivity extends DrawerBaseActivity implements OnMapReadyCallbac
 
     }
 
-    // temporary way to easily add LatLngs to the set for testing purposes
+    // temporary way to easily add LatLngs to the set and add new geofences for testing purposes
     @Override
     public void onMapLongClick(@NonNull LatLng latLng) {
         HashSet<LatLng> before = new HashSet<LatLng>(nearbyAnchorLatLngs);
@@ -327,22 +321,11 @@ public class MapActivity extends DrawerBaseActivity implements OnMapReadyCallbac
         return new LatLng(latitude, longitude);
     }
 
-
-//    private void tryAddingGeofence(LatLng latLng) {
-//        checkLocationPermission();
-//        if (Build.VERSION.SDK_INT >= 29) {
-//            checkBackgroundLocationPermission();
-//        }
-//
-//        mGoogleMap.clear();
-//        addMarker(latLng);
-//        addCircle(latLng, GEOFENCE_RADIUS, "blue");
-//        addGeofence(latLng, GEOFENCE_RADIUS);
-//    }
+    //need a method for getting the latlngs of anchors from the database that are within SEARCH_RADIUS of the user
 
 
     // in the future, this method will be called when the app searches for anchors in the database that are within SEARCH_RADIUS of the user,
-    // and it will receive a List<Geofence> of geofences which were not already added to the client or placed on the map.
+    // and its HashSet<LatLng> newLatLngs parameter contains the LatLngs of geofences which were not already added to the geofencing client or placed on the map.
     private void addGeofences(HashSet<LatLng> newLatLngs) {
 
         checkLocationPermission();
@@ -378,6 +361,8 @@ public class MapActivity extends DrawerBaseActivity implements OnMapReadyCallbac
                 });
     }
 
+    //need to make another method for removing the geofences whose centers are no longer within SEARCH_RADIUS of the user
+
 
     private void addMarker(LatLng latLng){
         MarkerOptions markerOptions = new MarkerOptions().position(latLng);
@@ -412,77 +397,9 @@ public class MapActivity extends DrawerBaseActivity implements OnMapReadyCallbac
         mGoogleMap.addCircle(circleOptions);
     }
 
-    // Leaving old code commented out for now, will remove later if location tracking is working
-
-//    @Override
-//    protected void onCreate(Bundle savedInstanceState) {
-//        super.onCreate(savedInstanceState);
-//        activityMapBinding = ActivityMapBinding.inflate(getLayoutInflater());
-//        setContentView(activityMapBinding.getRoot());
-//        allocateActivityTitle("Map");
-//
-//        mapFragment = (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map);
-//        fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this);
-//
-//        if(ActivityCompat.checkSelfPermission(this,
-//                Manifest.permission.ACCESS_FINE_LOCATION) ==
-//                PackageManager.PERMISSION_GRANTED){
-//
-//            getCurrentLocation();
-//
-//        }else{
-//            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, REQUEST_CODE);
-//        }
-//
-//    }
-//
-//    private void getCurrentLocation() {
-//        if(ActivityCompat.checkSelfPermission(this,
-//                Manifest.permission.ACCESS_FINE_LOCATION) !=
-//                PackageManager.PERMISSION_GRANTED){
-//            return;
-//        }
-//
-//
-//        @SuppressLint("MissingPermission") Task<Location> task = fusedLocationProviderClient.getLastLocation();
-//        task.addOnSuccessListener(new OnSuccessListener<Location>() {
-//            @Override
-//            public void onSuccess(Location location) {
-//                if(location != null){
-//
-//                    mapFragment.getMapAsync(new OnMapReadyCallback() {
-//                        @Override
-//                        public void onMapReady(@NonNull GoogleMap googleMap) {
-//                            LatLng latLng = new LatLng(location.getLatitude(), location.getLongitude());
-//                            MarkerOptions markerOptions = new MarkerOptions().position(latLng).title("You are here");
-//
-//                            googleMap.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng, 20));
-//
-//                            googleMap.addMarker(markerOptions).showInfoWindow();
-//
-//                        }
-//                    });
-//
-//                }
-//            }
-//        });
-//    }
-//
-//    @SuppressLint("MissingSuperCall")
-//    @Override
-//    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-//
-//        if(requestCode == REQUEST_CODE){
-//            if(grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED){
-//                getCurrentLocation();
-//            }
-//        }else{
-//            Toast.makeText(this, "Permission Denied", Toast.LENGTH_SHORT).show();
-//        }
-//
-//    }
-//
-//
+    //removed the code that was commented out here, since location tracking seems to be working
+    //if necessary, it can be found in previous commits
+    // - max
 
     public void launchViewMode(View view) {
 
@@ -504,5 +421,4 @@ public class MapActivity extends DrawerBaseActivity implements OnMapReadyCallbac
             }
         }
     }
-
 }

@@ -124,8 +124,6 @@ public class ViewMode extends AppCompatActivity {
                             appAnchorState != AppAnchorState.NONE) {
                         return;
                     }
-
-
                     Anchor anchor = arFragment.getArSceneView().getSession().hostCloudAnchor(hitResult.createAnchor());
 
                     setCloudAnchor(anchor);
@@ -133,9 +131,6 @@ public class ViewMode extends AppCompatActivity {
                     appAnchorState = AppAnchorState.HOSTING;
                     Toast.makeText(this,"Now Hosting...", Toast.LENGTH_LONG).show();
                     snackbarHelper.showMessage(this, "Now hosting...");
-
-
-
 
                     AnchorNode anchorNode = new AnchorNode(anchor);
                     anchorNode.setParent(arFragment.getArSceneView().getScene());
@@ -145,6 +140,7 @@ public class ViewMode extends AppCompatActivity {
                     sphere.setRenderable(sphereRenderable);
                     isPlaced = true;
                     sphere.select();
+
                 }
         );
 
@@ -175,6 +171,8 @@ public class ViewMode extends AppCompatActivity {
                     shortCode);
             Toast.makeText(this,"Anchor hosted. Cloud ID: " + shortCode, Toast.LENGTH_LONG).show();
             appAnchorState = AppAnchorState.HOSTED;
+
+            //i think the code to add the anchor's lat, long, and id to the database should go here
         }
     }
 
