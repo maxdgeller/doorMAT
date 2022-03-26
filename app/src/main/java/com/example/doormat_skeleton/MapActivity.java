@@ -39,6 +39,7 @@ import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.CameraPosition;
+import com.google.android.gms.maps.model.Circle;
 import com.google.android.gms.maps.model.CircleOptions;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
@@ -67,7 +68,8 @@ public class MapActivity extends DrawerBaseActivity implements OnMapReadyCallbac
     SharedPreferences userPos;
 
     private int VIEW_MODE_REQUEST_CODE = 1;
-    //    private int FINE_LOCATION_ACCESS_REQUEST_CODE = 10001;
+//    private final int PERMISSIONS_REQUEST_LOCATION = 101;
+    private final int FINE_LOCATION_ACCESS_REQUEST_CODE = 10001;
     private final int BACKGROUND_LOCATION_ACCESS_REQUEST_CODE = 10002;
 
     //Initialize geofencing variables
@@ -76,9 +78,9 @@ public class MapActivity extends DrawerBaseActivity implements OnMapReadyCallbac
     private final String GEOFENCE_ID = "SOME_GEOFENCE_ID"; //placeholder
     private final float GEOFENCE_RADIUS = 50;
     private final float SEARCH_RADIUS = 1000; //radius around user from which to get nearby cloud anchors' coordinates from database
-    private Set<LatLng> nearbyAnchorLatLngs; //set of LatLngs of anchors within SEARCH_RADIUS of the user
-    private Set<String> nearbyAnchorLatLngStrings;
-    Set<String> DEFAULT_SET;
+    private Set<LatLng> nearbyAnchorLatLngs = new HashSet<LatLng>(); //set of LatLngs of anchors within SEARCH_RADIUS of the user
+    private Set<String> nearbyAnchorLatLngStrings = new HashSet<String>();
+    Set<String> DEFAULT_SET = new HashSet<String>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -108,6 +110,18 @@ public class MapActivity extends DrawerBaseActivity implements OnMapReadyCallbac
         if (mFusedLocationClient != null) {
             mFusedLocationClient.removeLocationUpdates(mLocationCallback);
         }
+
+        SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
+        SharedPreferences.Editor editor = sharedPref.edit();
+
+        nearbyAnchorLatLngStrings.clear();
+        for (LatLng latLng : nearbyAnchorLatLngs) {
+            nearbyAnchorLatLngStrings.add(latLng.toString());
+        }
+        editor.putStringSet("nearby", nearbyAnchorLatLngStrings);
+
+        editor.apply();
+
     }
 
     @Override
@@ -119,21 +133,7 @@ public class MapActivity extends DrawerBaseActivity implements OnMapReadyCallbac
         mLocationRequest.setFastestInterval(3500);
         mLocationRequest.setPriority(LocationRequest.PRIORITY_BALANCED_POWER_ACCURACY);
 
-//        if (ContextCompat.checkSelfPermission(this,
-//                Manifest.permission.ACCESS_FINE_LOCATION)
-//                == PackageManager.PERMISSION_GRANTED) {
-//            //Location Permission already granted
-//            mFusedLocationClient.requestLocationUpdates(mLocationRequest, mLocationCallback, Looper.myLooper());
-//            mGoogleMap.setMyLocationEnabled(true);
-//        } else {
-//            //Request Location Permission
-//            checkLocationPermission();
-//        }
-
         checkLocationPermission();
-        if (Build.VERSION.SDK_INT >= 29) {
-            checkBackgroundLocationPermission();
-        }
 
         SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
         double longitude = sharedPref.getFloat("longitude", DEFAULT_LONGITUDE);
@@ -162,15 +162,12 @@ public class MapActivity extends DrawerBaseActivity implements OnMapReadyCallbac
                 LatLng latLng = new LatLng(location.getLatitude(), location.getLongitude());
                 mLastLocation = location;
 
-
                 //move map camera
                 mGoogleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng, 20));
 
             }
         }
     };
-
-    public static final int PERMISSIONS_REQUEST_LOCATION = 101;
 
     private void checkLocationPermission() {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
@@ -182,13 +179,13 @@ public class MapActivity extends DrawerBaseActivity implements OnMapReadyCallbac
                             @Override
                             public void onClick(DialogInterface dialogInterface, int i) {
                                 //Prompt the user once explanation has been shown
-                                ActivityCompat.requestPermissions(MapActivity.this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, PERMISSIONS_REQUEST_LOCATION);
+                                ActivityCompat.requestPermissions(MapActivity.this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, FINE_LOCATION_ACCESS_REQUEST_CODE);
                             }
                         })
                         .create()
                         .show();
             } else {
-                ActivityCompat.requestPermissions(MapActivity.this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, PERMISSIONS_REQUEST_LOCATION);
+                ActivityCompat.requestPermissions(MapActivity.this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, FINE_LOCATION_ACCESS_REQUEST_CODE);
             }
         }
     }
@@ -220,7 +217,7 @@ public class MapActivity extends DrawerBaseActivity implements OnMapReadyCallbac
     public void onRequestPermissionsResult(int requestCode, String permissions[], int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         switch (requestCode) {
-            case PERMISSIONS_REQUEST_LOCATION: {
+            case FINE_LOCATION_ACCESS_REQUEST_CODE: {
 
                 if (grantResults.length > 0
                         && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
@@ -241,7 +238,6 @@ public class MapActivity extends DrawerBaseActivity implements OnMapReadyCallbac
             }
             case BACKGROUND_LOCATION_ACCESS_REQUEST_CODE: {
                 if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-
                     Toast.makeText(this, "You can add geofences", Toast.LENGTH_LONG).show();
                 } else {
                     Toast.makeText(this, "Background location access is necessary for geofences to trigger", Toast.LENGTH_LONG).show();
@@ -280,6 +276,12 @@ public class MapActivity extends DrawerBaseActivity implements OnMapReadyCallbac
     protected void onResume() {
         super.onResume();
 
+
+//        checkLocationPermission();
+//        if (Build.VERSION.SDK_INT >= 29) {
+//            checkBackgroundLocationPermission();
+//        }
+
         SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
         double longitude = sharedPref.getFloat("longitude", DEFAULT_LONGITUDE);
         double latitude = sharedPref.getFloat("latitude", DEFAULT_LATITUDE);
@@ -290,6 +292,9 @@ public class MapActivity extends DrawerBaseActivity implements OnMapReadyCallbac
         nearbyAnchorLatLngs.clear();
         for (String latLngStr : nearbyAnchorLatLngStrings) {
             nearbyAnchorLatLngs.add(stringToLatLng(latLngStr));
+        }
+        if (!nearbyAnchorLatLngs.isEmpty()) {
+            addGeofences((HashSet<LatLng>) nearbyAnchorLatLngs);
         }
 
 //        if (isPlaced) {
@@ -308,6 +313,7 @@ public class MapActivity extends DrawerBaseActivity implements OnMapReadyCallbac
         HashSet<LatLng> after = new HashSet<LatLng>(nearbyAnchorLatLngs);
         after.removeAll(before);
 
+        addGeofences(after);
     }
 
     //takes a string that resulted from LatLng.toString() and turns it back into LatLng
@@ -340,9 +346,7 @@ public class MapActivity extends DrawerBaseActivity implements OnMapReadyCallbac
     private void addGeofences(HashSet<LatLng> newLatLngs) {
 
         checkLocationPermission();
-        if (Build.VERSION.SDK_INT >= 29) {
-            checkBackgroundLocationPermission();
-        }
+        checkBackgroundLocationPermission();
 
         List<Geofence> geofenceList = new ArrayList<Geofence>();
         for (LatLng latLng : newLatLngs) {
@@ -360,7 +364,6 @@ public class MapActivity extends DrawerBaseActivity implements OnMapReadyCallbac
                         Log.d(TAG, "onSuccess: Geofence(s) added");
                         //mGoogleMap.clear();
                         for (LatLng latLng : newLatLngs) {
-                            addMarker(latLng);
                             addCircle(latLng, GEOFENCE_RADIUS, "blue");
                         }
 
