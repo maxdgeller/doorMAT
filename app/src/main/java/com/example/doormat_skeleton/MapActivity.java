@@ -127,12 +127,12 @@ public class MapActivity extends DrawerBaseActivity implements OnMapReadyCallbac
     public void onMapReady(GoogleMap googleMap) {
         mGoogleMap = googleMap;
 
+        checkLocationPermission();
+
         mLocationRequest = new LocationRequest();
         mLocationRequest.setInterval(5500);
         mLocationRequest.setFastestInterval(3500);
         mLocationRequest.setPriority(LocationRequest.PRIORITY_BALANCED_POWER_ACCURACY);
-
-        checkLocationPermission();
 
         SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
         double longitude = sharedPref.getFloat("longitude", DEFAULT_LONGITUDE);
@@ -168,28 +168,55 @@ public class MapActivity extends DrawerBaseActivity implements OnMapReadyCallbac
         }
     };
 
-    private void checkLocationPermission() {
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            if (ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.ACCESS_FINE_LOCATION)) {
-                new AlertDialog.Builder(this)
-                        .setTitle("Please enable location permissions")
-                        .setMessage("This app needs the Location permission, please accept to use location functionality")
-                        .setPositiveButton("OK", new DialogInterface.OnClickListener() {
-                            @Override
-                            public void onClick(DialogInterface dialogInterface, int i) {
-                                //Prompt the user once explanation has been shown
-                                ActivityCompat.requestPermissions(MapActivity.this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, FINE_LOCATION_ACCESS_REQUEST_CODE);
-                            }
-                        })
-                        .create()
-                        .show();
-            } else {
-                ActivityCompat.requestPermissions(MapActivity.this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, FINE_LOCATION_ACCESS_REQUEST_CODE);
+    private boolean checkLocationPermission() {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+            mFusedLocationClient.requestLocationUpdates(mLocationRequest, mLocationCallback, Looper.myLooper());
+            mGoogleMap.setMyLocationEnabled(true);
+            return true;
+        }
+        else {
+            if (mFusedLocationClient != null) {
+                mFusedLocationClient.removeLocationUpdates(mLocationCallback);
             }
+            mGoogleMap.setMyLocationEnabled(false);
+            requestLocationPermission();
+            return false;
         }
     }
 
-    private void checkBackgroundLocationPermission() {
+    private void requestLocationPermission() {
+        if (ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.ACCESS_FINE_LOCATION)) {
+            new AlertDialog.Builder(this)
+                    .setTitle("Please enable location permissions")
+                    .setMessage("This app needs the Location permission, please accept to use location functionality")
+                    .setPositiveButton("OK", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialogInterface, int i) {
+                            //Prompt the user once explanation has been shown
+                            ActivityCompat.requestPermissions(MapActivity.this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, FINE_LOCATION_ACCESS_REQUEST_CODE);
+                        }
+                    })
+                    .create()
+                    .show();
+        } else {
+            ActivityCompat.requestPermissions(MapActivity.this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, FINE_LOCATION_ACCESS_REQUEST_CODE);
+        }
+    }
+
+    private boolean checkBackgroundLocationPermission() {
+        if ((Build.VERSION.SDK_INT >= 29) & ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_BACKGROUND_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+            return true;
+        }
+        else if ((Build.VERSION.SDK_INT >= 29) & ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_BACKGROUND_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            requestBackgroundLocationPermission();
+            return false;
+        }
+        else {
+            return true;
+        }
+    }
+
+    private void requestBackgroundLocationPermission() {
         if (Build.VERSION.SDK_INT >= 29) {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_BACKGROUND_LOCATION) != PackageManager.PERMISSION_GRANTED) {
                 if (ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.ACCESS_BACKGROUND_LOCATION)) {
@@ -230,14 +257,13 @@ public class MapActivity extends DrawerBaseActivity implements OnMapReadyCallbac
                     }
 
                 } else {
-
                     Toast.makeText(this, "Permission denied", Toast.LENGTH_LONG).show();
                 }
                 return;
             }
             case BACKGROUND_LOCATION_ACCESS_REQUEST_CODE: {
                 if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    Toast.makeText(this, "You can add geofences", Toast.LENGTH_LONG).show();
+                    Toast.makeText(this, "Geofencing enabled", Toast.LENGTH_LONG).show();
                 } else {
                     Toast.makeText(this, "Background location access is necessary for geofences to trigger", Toast.LENGTH_LONG).show();
                 }
@@ -328,8 +354,9 @@ public class MapActivity extends DrawerBaseActivity implements OnMapReadyCallbac
     // and its HashSet<LatLng> newLatLngs parameter contains the LatLngs of geofences which were not already added to the geofencing client or placed on the map.
     private void addGeofences(HashSet<LatLng> newLatLngs) {
 
-        checkLocationPermission();
-        checkBackgroundLocationPermission();
+        if (!checkLocationPermission() | !checkBackgroundLocationPermission()) {
+            return;
+        }
 
         List<Geofence> geofenceList = new ArrayList<Geofence>();
         for (LatLng latLng : newLatLngs) {
