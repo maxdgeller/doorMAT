@@ -75,11 +75,15 @@ public class MapActivity extends DrawerBaseActivity implements OnMapReadyCallbac
     private GeofencingClient geofencingClient;
     private GeofenceHelper geofenceHelper;
     private final String GEOFENCE_ID = "SOME_GEOFENCE_ID"; //placeholder
-    private final float GEOFENCE_RADIUS = 50;
+
+    private final float GEOFENCE_RADIUS = 50; //radius around anchor within which a notification is triggered
     private final float SEARCH_RADIUS = 1000; //radius around user from which to get nearby cloud anchors' coordinates from database
+    private final float ON_MAP_RADIUS = 250; //radius around user in which nearby cloud anchors and their geofences will be marked on the map
+
     private Set<LatLng> nearbyAnchorLatLngs = new HashSet<LatLng>(); //set of LatLngs of anchors within SEARCH_RADIUS of the user
     private Set<String> nearbyAnchorLatLngStrings = new HashSet<String>();
     Set<String> DEFAULT_SET = new HashSet<String>();
+    private Location locationOfSearch; //location of previous search
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -95,7 +99,6 @@ public class MapActivity extends DrawerBaseActivity implements OnMapReadyCallbac
         //Initialize map fragment
         mapFrag = (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map);
         mapFrag.getMapAsync(this);
-
         //getGeofencingClient returns a GeofencingClient instance
         geofencingClient = LocationServices.getGeofencingClient(this);
         geofenceHelper = new GeofenceHelper(this);
@@ -149,6 +152,33 @@ public class MapActivity extends DrawerBaseActivity implements OnMapReadyCallbac
 
     }
 
+    // executes inside of onLocationResult,
+    // gets new anchors from the database if the user has traveled SEARCH_RADIUS - ON_MAP_RADIUS away from previous search,
+    // or if nearbyAnchorLatLngs is empty
+    private void searchIfNewLocation(Location lastLocation, Location newLocation) {
+
+        if (nearbyAnchorLatLngs.isEmpty()) {
+            locationOfSearch = newLocation;
+            //execute a function that gets anchors within SEARCH_RADIUS from database
+            return;
+        }
+
+        double lat1 = lastLocation.getLatitude();
+        double lat2 = newLocation.getLatitude();
+        double lon1 = lastLocation.getLongitude();
+        double lon2 = newLocation.getLongitude();
+        double el1 = lastLocation.getAltitude();
+        double el2 = newLocation.getAltitude();
+
+        boolean isNewLocation = distance(lat1, lat2, lon1, lon2, el1, el2) >= SEARCH_RADIUS - ON_MAP_RADIUS;
+
+        if (isNewLocation) {
+            locationOfSearch = newLocation;
+            //execute a function that gets anchors within SEARCH_RADIUS from database
+        }
+    }
+
+
     LocationCallback mLocationCallback = new LocationCallback() {
         @Override
         public void onLocationResult(LocationResult locationResult) {
@@ -157,12 +187,16 @@ public class MapActivity extends DrawerBaseActivity implements OnMapReadyCallbac
                 Location location = locationList.get(locationList.size() - 1);
                 Log.i("MapsActivity", "Location: " + location.getLatitude() + " " + location.getLongitude());
 
+
                 //Place current location marker
                 LatLng latLng = new LatLng(location.getLatitude(), location.getLongitude());
                 mLastLocation = location;
 
                 //move map camera
                 mGoogleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng, 20));
+
+                // search from database if far enough away
+                searchIfNewLocation(locationOfSearch, location);
 
             }
         }
@@ -295,6 +329,7 @@ public class MapActivity extends DrawerBaseActivity implements OnMapReadyCallbac
         editor.putStringSet("nearby", nearbyAnchorLatLngStrings);
 
         editor.apply();
+
     }
 
     @Override
@@ -315,6 +350,8 @@ public class MapActivity extends DrawerBaseActivity implements OnMapReadyCallbac
         if (!nearbyAnchorLatLngs.isEmpty()) {
             addGeofences((HashSet<LatLng>) nearbyAnchorLatLngs);
         }
+
+
 
         //i think we won't need this code anymore
 //        if (isPlaced) {
@@ -345,6 +382,25 @@ public class MapActivity extends DrawerBaseActivity implements OnMapReadyCallbac
         double longitude = Double.parseDouble(latLng[1]);
 
         return new LatLng(latitude, longitude);
+    }
+
+    //returns distance in meters. shamelessly stolen from stackoverflow, not sure if it will work
+    public static double distance(double lat1, double lat2, double lon1, double lon2, double el1, double el2) {
+        final int R = 6371; // Radius of the earth
+
+        double latDistance = Math.toRadians(lat2 - lat1);
+        double lonDistance = Math.toRadians(lon2 - lon1);
+        double a = Math.sin(latDistance / 2) * Math.sin(latDistance / 2)
+                + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
+                * Math.sin(lonDistance / 2) * Math.sin(lonDistance / 2);
+        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        double distance = R * c * 1000; // convert to meters
+
+        double height = el1 - el2;
+
+        distance = Math.pow(distance, 2) + Math.pow(height, 2);
+
+        return Math.sqrt(distance);
     }
 
     //need a method for getting the latlngs of anchors from the database that are within SEARCH_RADIUS of the user
@@ -424,10 +480,6 @@ public class MapActivity extends DrawerBaseActivity implements OnMapReadyCallbac
         mGoogleMap.addCircle(circleOptions);
     }
 
-    //removed the code that was commented out here, since location tracking seems to be working
-    //if necessary, it can be found in previous commits
-    // - max
-
     public void launchViewMode(View view) {
 
         Intent i = new Intent(MapActivity.this, ViewMode.class);
@@ -447,5 +499,11 @@ public class MapActivity extends DrawerBaseActivity implements OnMapReadyCallbac
                 isPlaced = false;
             }
         }
+    }
+
+    @Override
+    public void onBackPressed() {
+        super.onBackPressed();
+        finish();
     }
 }
