@@ -48,6 +48,8 @@ import com.google.ar.sceneform.rendering.ModelRenderable;
 import com.google.ar.sceneform.ux.ArFragment;
 import com.google.ar.sceneform.ux.TransformableNode;
 
+import java.util.HashMap;
+
 public class ViewMode extends AppCompatActivity {
 
     private ArFragment arFragment;
@@ -56,12 +58,14 @@ public class ViewMode extends AppCompatActivity {
     private Button clear;
     private Button finish;
     private FloatingActionButton back_btn;
-    private Session session;
+    SessionManager sessionManager;
+    String mName;
     private boolean isPlaced;
     SharedPreferences markerPreferences;
     LatLng latLng;
     double lat;
     double lon;
+
 
 
     private enum AppAnchorState {
@@ -81,6 +85,11 @@ public class ViewMode extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_view_mode);
         markerPreferences = getSharedPreferences("MarkerValue", Context.MODE_PRIVATE);
+
+        sessionManager = new SessionManager(this);
+        sessionManager.checkLogin();
+        HashMap<String, String> user = sessionManager.getUserDetail();
+        mName = user.get(sessionManager.USERNAME);
 
         Button clear = findViewById(R.id.clear);
         Button finish = findViewById(R.id.finish);
@@ -172,7 +181,13 @@ public class ViewMode extends AppCompatActivity {
         }
         else if(cloudAnchorState == Anchor.CloudAnchorState.SUCCESS){
             int shortCode = storeManager.nextShortCode(this);
-            storeManager.storeUsingShortCode(this, shortCode, cloudAnchor.getCloudAnchorId(), isPlaced, lat, lon);
+            storeManager.storeUsingShortCode(this,
+                    shortCode,
+                    cloudAnchor.getCloudAnchorId(),
+                    isPlaced,
+                    lat,
+                    lon,
+                    mName);
 
             snackbarHelper.showMessageWithDismiss(this, "Anchor hosted. Cloud ID: " +
                     shortCode);

@@ -26,7 +26,12 @@ public class StoreManager {
     }
 
     /** Stores the cloud anchor ID in the activity's SharedPrefernces. */
-    void storeUsingShortCode(Activity activity, int doormat_id, String cloudAnchorId, boolean isFound, double lat, double lon) {
+    void storeUsingShortCode(Activity activity, int doormat_id,
+                             String cloudAnchorId,
+                             boolean isFound,
+                             double lat,
+                             double lon,
+                             String username) {
         int foundVal;
         SharedPreferences sharedPrefs = activity.getPreferences(Context.MODE_PRIVATE);
         sharedPrefs.edit().putString(KEY_PREFIX + doormat_id, cloudAnchorId).apply();
@@ -51,7 +56,7 @@ public class StoreManager {
                 data[0] = String.valueOf(doormat_id);
                 data[1] = String.valueOf(lat);
                 data[2] = String.valueOf(lon);
-                data[3] = "User";
+                data[3] = username;
                 data[4] = "default_shape";
                 data[5] = "default_color";
                 PutData putData = new PutData("http://34.203.214.232/mysite/addmarker.php", "POST", field, data);
