@@ -3,6 +3,12 @@ package com.example.doormat_skeleton;
 import android.app.Activity;
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.os.Handler;
+import android.os.Looper;
+import android.util.Log;
+import android.widget.Toast;
+
+import com.vishnusivadas.advanced_httpurlconnection.PutData;
 
 public class StoreManager {
     private static final String NEXT_SHORT_CODE = "next_short_code";
@@ -20,10 +26,53 @@ public class StoreManager {
     }
 
     /** Stores the cloud anchor ID in the activity's SharedPrefernces. */
-    void storeUsingShortCode(Activity activity, int shortCode, String cloudAnchorId) {
+    void storeUsingShortCode(Activity activity, int doormat_id, String cloudAnchorId, boolean isFound, double lat, double lon) {
+        int foundVal;
         SharedPreferences sharedPrefs = activity.getPreferences(Context.MODE_PRIVATE);
-        sharedPrefs.edit().putString(KEY_PREFIX + shortCode, cloudAnchorId).apply();
+        sharedPrefs.edit().putString(KEY_PREFIX + doormat_id, cloudAnchorId).apply();
+
+        if(isFound= true){foundVal = 1;} else {foundVal=0;}
+
+        Handler handler = new Handler(Looper.getMainLooper());
+        handler.post(new Runnable() {
+            @Override
+            public void run() {
+                //Starting Write and Read data with URL
+                //Creating array for parameters
+                String[] field = new String[6];
+                field[0] = "doormat_id";
+                field[1] = "latitude";
+                field[2] = "longitude";
+                field[3] = "created_by";
+                field[4] = "shape";
+                field[5] = "color";
+                //Creating array for data
+                String[] data = new String[6];
+                data[0] = String.valueOf(doormat_id);
+                data[1] = String.valueOf(lat);
+                data[2] = String.valueOf(lon);
+                data[3] = "User";
+                data[4] = "default_shape";
+                data[5] = "default_color";
+                PutData putData = new PutData("http://34.203.214.232/mysite/addmarker.php", "POST", field, data);
+                if (putData.startPut()) {
+                    if (putData.onComplete()) {
+                        String result = putData.getResult();
+                        if(result.equals("Doormat saved successfully")){
+                            Toast.makeText(activity, result, Toast.LENGTH_SHORT).show();
+                        }else{
+                            Toast.makeText(activity, result, Toast.LENGTH_SHORT).show();
+                        }
+                        Log.i("PutData", result);
+                    }
+                }
+                //End Write and Read data with URL
+            }
+        });
+
     }
+
+
 
     /**
      * Retrieves the cloud anchor ID using a short code. Returns an empty string if a cloud anchor ID
@@ -33,4 +82,14 @@ public class StoreManager {
         SharedPreferences sharedPrefs = activity.getPreferences(Context.MODE_PRIVATE);
         return sharedPrefs.getString(KEY_PREFIX + shortCode, "");
     }
+
+
+
+    private void insertData() {
+
+        //Get the insert URL
+
+    }
+
+
 }

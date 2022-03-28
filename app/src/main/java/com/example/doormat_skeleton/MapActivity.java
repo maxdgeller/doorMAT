@@ -482,7 +482,13 @@ public class MapActivity extends DrawerBaseActivity implements OnMapReadyCallbac
 
     public void launchViewMode(View view) {
 
+        SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
+        double longitude = sharedPref.getFloat("longitude", DEFAULT_LONGITUDE);
+        double latitude = sharedPref.getFloat("latitude", DEFAULT_LATITUDE);
+
+        LatLng latLng = new LatLng(latitude, longitude);
         Intent i = new Intent(MapActivity.this, ViewMode.class);
+        i.putExtra("LatLng", latLng);
         startActivityForResult(i, VIEW_MODE_REQUEST_CODE);
 
     }

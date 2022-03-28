@@ -19,6 +19,7 @@ import android.widget.Toast;
 
 import com.example.doormat_skeleton.Helpers.CameraPermissionHelper;
 import com.example.doormat_skeleton.Helpers.SnackbarHelper;
+import com.google.android.gms.maps.model.LatLng;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.ar.core.Anchor;
 import com.google.ar.core.ArCoreApk;
@@ -58,6 +59,9 @@ public class ViewMode extends AppCompatActivity {
     private Session session;
     private boolean isPlaced;
     SharedPreferences markerPreferences;
+    LatLng latLng;
+    double lat;
+    double lon;
 
 
     private enum AppAnchorState {
@@ -82,6 +86,9 @@ public class ViewMode extends AppCompatActivity {
         Button finish = findViewById(R.id.finish);
         finish.setVisibility(View.GONE);
         FloatingActionButton back_btn = findViewById(R.id.back_btn);
+        latLng = getIntent().getExtras().getParcelable("LatLng");
+        lat = latLng.latitude;
+        lon = latLng.longitude;
 
         clear.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -165,7 +172,7 @@ public class ViewMode extends AppCompatActivity {
         }
         else if(cloudAnchorState == Anchor.CloudAnchorState.SUCCESS){
             int shortCode = storeManager.nextShortCode(this);
-            storeManager.storeUsingShortCode(this, shortCode, cloudAnchor.getCloudAnchorId());
+            storeManager.storeUsingShortCode(this, shortCode, cloudAnchor.getCloudAnchorId(), isPlaced, lat, lon);
 
             snackbarHelper.showMessageWithDismiss(this, "Anchor hosted. Cloud ID: " +
                     shortCode);
