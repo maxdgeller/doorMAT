@@ -15,6 +15,9 @@ import java.util.List;
 public class DoormatManager {
 
     JSONObject jsonObject;
+    List<UserData.Doormat> doormats;
+
+    //pulls in doormats within a 1000 radius of the lat long doubles provided
     public void getDoormat(Activity activity ,double lat, double lon){
         Handler handler = new Handler();
         handler.post(new Runnable() {
@@ -48,10 +51,11 @@ public class DoormatManager {
         });
     }
 
+    //ports the response string from the database into a list of doormat objects
     public void extractDoormat(String result) throws JSONException {
         JSONObject obj = new JSONObject(result);
         UserData user_data = (UserData) new Gson().fromJson(obj.toString(), UserData.class);
-        List<UserData.Doormat> doormats = user_data.getData();
+        doormats = user_data.getData();
     }
 
 

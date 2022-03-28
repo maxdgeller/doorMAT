@@ -25,6 +25,8 @@ public class UserData {
         private String shape;
         private String color;
 
+        //getters and setters
+
         public int getDoormat_id() {
             return doormat_id;
         }
