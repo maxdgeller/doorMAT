@@ -88,13 +88,4 @@ public class StoreManager {
         return sharedPrefs.getString(KEY_PREFIX + shortCode, "");
     }
 
-
-
-    private void insertData() {
-
-        //Get the insert URL
-
-    }
-
-
 }

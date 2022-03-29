@@ -66,6 +66,9 @@ public class MapActivity extends DrawerBaseActivity implements OnMapReadyCallbac
     float DEFAULT_LONGITUDE;
     float DEFAULT_ZOOM;
     SharedPreferences userPos;
+    DoormatManager doormatManager;
+
+    List<UserData.Doormat> doormats;
 
     private int VIEW_MODE_REQUEST_CODE = 1;
     private final int FINE_LOCATION_ACCESS_REQUEST_CODE = 10001;
@@ -91,7 +94,7 @@ public class MapActivity extends DrawerBaseActivity implements OnMapReadyCallbac
         setContentView(R.layout.activity_map);
 
         userPos = getSharedPreferences("UserPosition", Context.MODE_PRIVATE);
-
+        doormatManager = new DoormatManager();
 
         //Set FusedLocation
         mFusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
@@ -130,7 +133,9 @@ public class MapActivity extends DrawerBaseActivity implements OnMapReadyCallbac
     public void onMapReady(GoogleMap googleMap) {
         mGoogleMap = googleMap;
 
-        checkLocationPermission();
+        if(checkLocationPermission()){
+            mGoogleMap.setMyLocationEnabled(true);
+        }
 
         mLocationRequest = new LocationRequest();
         mLocationRequest.setInterval(5500);
@@ -160,6 +165,11 @@ public class MapActivity extends DrawerBaseActivity implements OnMapReadyCallbac
         if (nearbyAnchorLatLngs.isEmpty()) {
             locationOfSearch = newLocation;
             //execute a function that gets anchors within SEARCH_RADIUS from database
+            SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
+            double longitude = sharedPref.getFloat("longitude", DEFAULT_LONGITUDE);
+            double latitude = sharedPref.getFloat("latitude", DEFAULT_LATITUDE);
+            doormatManager.getDoormat(this, latitude, longitude);
+
             return;
         }
 
@@ -175,6 +185,11 @@ public class MapActivity extends DrawerBaseActivity implements OnMapReadyCallbac
         if (isNewLocation) {
             locationOfSearch = newLocation;
             //execute a function that gets anchors within SEARCH_RADIUS from database
+            doormatManager.getDoormat(this, lat2, lon2);
+            //sets the retrieved doormats within 1000 radius of supplied latlong to
+            //a list of doormat objects declared globally
+            doormats = doormatManager.doormats;
+            nearByAnchorLatLngSetter();
         }
     }
 
@@ -196,7 +211,7 @@ public class MapActivity extends DrawerBaseActivity implements OnMapReadyCallbac
                 mGoogleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng, 20));
 
                 // search from database if far enough away
-                searchIfNewLocation(locationOfSearch, location);
+                searchIfNewLocation(mLastLocation, location);
 
             }
         }
@@ -205,7 +220,7 @@ public class MapActivity extends DrawerBaseActivity implements OnMapReadyCallbac
     private boolean checkLocationPermission() {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
             mFusedLocationClient.requestLocationUpdates(mLocationRequest, mLocationCallback, Looper.myLooper());
-            mGoogleMap.setMyLocationEnabled(true);
+//            mGoogleMap.setMyLocationEnabled(true);
             return true;
         }
         else {
@@ -411,7 +426,8 @@ public class MapActivity extends DrawerBaseActivity implements OnMapReadyCallbac
     private void addGeofences(HashSet<LatLng> newLatLngs) {
 
         if (!checkLocationPermission() | !checkBackgroundLocationPermission()) {
-            return;
+            checkLocationPermission();
+            checkBackgroundLocationPermission();
         }
 
         List<Geofence> geofenceList = new ArrayList<Geofence>();
@@ -500,11 +516,24 @@ public class MapActivity extends DrawerBaseActivity implements OnMapReadyCallbac
         if (requestCode == VIEW_MODE_REQUEST_CODE) {
             if(resultCode == Activity.RESULT_OK){
                 isPlaced = true;
+
             }
             if (resultCode == Activity.RESULT_CANCELED) {
                 isPlaced = false;
             }
         }
+    }
+
+    private void nearByAnchorLatLngSetter(){
+        if(nearbyAnchorLatLngs != null){
+            for(UserData.Doormat d: doormats){
+                double lat = d.getLatitude();
+                double lon = d.getLongitude();
+                LatLng latLng = new LatLng(lat, lon);
+                nearbyAnchorLatLngs.add(latLng);
+            }
+        }
+
     }
 
     @Override
