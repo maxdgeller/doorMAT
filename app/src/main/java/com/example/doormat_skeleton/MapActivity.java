@@ -45,13 +45,19 @@ import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-public class MapActivity extends DrawerBaseActivity implements OnMapReadyCallback, GoogleMap.OnMapLongClickListener {
+public class MapActivity extends DrawerBaseActivity implements OnMapReadyCallback, GoogleMap.OnMapLongClickListener, DoormatManager.VolleyCallback {
 
     private static final String TAG = "MapActivity";
 
@@ -68,7 +74,9 @@ public class MapActivity extends DrawerBaseActivity implements OnMapReadyCallbac
     SharedPreferences userPos;
     DoormatManager doormatManager;
 
-    List<UserData.Doormat> doormats;
+    List<UserData.Doormat> mDoormats;
+
+    public static final String KEY_CONNECTIONS = "KEY_CONNECTIONS"; //used for storing doormats from database into sharedpreferences
 
     private int VIEW_MODE_REQUEST_CODE = 1;
     private final int FINE_LOCATION_ACCESS_REQUEST_CODE = 10001;
@@ -168,7 +176,13 @@ public class MapActivity extends DrawerBaseActivity implements OnMapReadyCallbac
             SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
             double longitude = sharedPref.getFloat("longitude", DEFAULT_LONGITUDE);
             double latitude = sharedPref.getFloat("latitude", DEFAULT_LATITUDE);
-            doormatManager.getDoormat(this, latitude, longitude);
+            doormatManager = new DoormatManager();
+            doormatManager.setVolleyCallback(this);
+            doormatManager.getDoormats(this,latitude, longitude);
+
+            String connectionsJSONString = getPreferences(MODE_PRIVATE).getString(KEY_CONNECTIONS, null);
+            Type type = new TypeToken< List < UserData.Doormat >>() {}.getType();
+            mDoormats = new Gson().fromJson(connectionsJSONString, type);
 
             return;
         }
@@ -185,11 +199,15 @@ public class MapActivity extends DrawerBaseActivity implements OnMapReadyCallbac
         if (isNewLocation) {
             locationOfSearch = newLocation;
             //execute a function that gets anchors within SEARCH_RADIUS from database
-            doormatManager.getDoormat(this, lat2, lon2);
+            doormatManager = new DoormatManager(); // call manager
+            doormatManager.setVolleyCallback(this); // set this context to listen for provide response from callback
+            doormatManager.getDoormats(this, lat2, lon2); // pulls in response from database to retrieve doormats within 1000 radius of lat/lng
             //sets the retrieved doormats within 1000 radius of supplied latlong to
             //a list of doormat objects declared globally
-            doormats = doormatManager.doormats;
-            nearByAnchorLatLngSetter();
+            String connectionsJSONString = getPreferences(MODE_PRIVATE).getString(KEY_CONNECTIONS, null);
+            Type type = new TypeToken< List < UserData.Doormat >>() {}.getType();
+            mDoormats = new Gson().fromJson(connectionsJSONString, type); // sets global variable to list of doormat objects. see UserData class for getters
+            nearByAnchorLatLngSetter(); //method to set list of nearby anchors to lat/lngs of retrieved doormat objects
         }
     }
 
@@ -526,19 +544,35 @@ public class MapActivity extends DrawerBaseActivity implements OnMapReadyCallbac
 
     private void nearByAnchorLatLngSetter(){
         if(nearbyAnchorLatLngs != null){
-            for(UserData.Doormat d: doormats){
+            if(mDoormats!= null){
+            for(UserData.Doormat d: mDoormats) {
                 double lat = d.getLatitude();
                 double lon = d.getLongitude();
                 LatLng latLng = new LatLng(lat, lon);
                 nearbyAnchorLatLngs.add(latLng);
             }
+            }
         }
-
     }
 
     @Override
     public void onBackPressed() {
         super.onBackPressed();
         finish();
+    }
+
+    @Override
+    public void onSuccessResponse(String result) throws JSONException {
+        Toast.makeText(this, result, Toast.LENGTH_LONG).show();
+
+        PreferenceManager.getDefaultSharedPreferences(this).edit().putString("MYLABEL", result).apply();
+        JSONObject obj = new JSONObject(result);
+
+        UserData user_data = (UserData) new Gson().fromJson(obj.toString(), UserData.class);
+        List<UserData.Doormat> mDoormats = user_data.getData();
+        String connectionsJSONString = new Gson().toJson(mDoormats);
+        SharedPreferences.Editor editor = getPreferences(MODE_PRIVATE).edit();
+        editor.putString(KEY_CONNECTIONS, connectionsJSONString);
+        editor.commit();
     }
 }
