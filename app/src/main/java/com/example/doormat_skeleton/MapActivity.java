@@ -479,6 +479,18 @@ public class MapActivity extends DrawerBaseActivity implements OnMapReadyCallbac
     }
 
     //need to make another method for removing the geofences whose centers are no longer within SEARCH_RADIUS of the user
+    private void nearByAnchorLatLngSetter(){
+        if(nearbyAnchorLatLngs != null){
+            if(mDoormats!= null){
+                for(UserData.Doormat d: mDoormats) {
+                    double lat = d.getLatitude();
+                    double lon = d.getLongitude();
+                    LatLng latLng = new LatLng(lat, lon);
+                    nearbyAnchorLatLngs.add(latLng);
+                }
+            }
+        }
+    }
 
 
     private void addMarker(LatLng latLng){
@@ -542,18 +554,6 @@ public class MapActivity extends DrawerBaseActivity implements OnMapReadyCallbac
         }
     }
 
-    private void nearByAnchorLatLngSetter(){
-        if(nearbyAnchorLatLngs != null){
-            if(mDoormats!= null){
-            for(UserData.Doormat d: mDoormats) {
-                double lat = d.getLatitude();
-                double lon = d.getLongitude();
-                LatLng latLng = new LatLng(lat, lon);
-                nearbyAnchorLatLngs.add(latLng);
-            }
-            }
-        }
-    }
 
     @Override
     public void onBackPressed() {

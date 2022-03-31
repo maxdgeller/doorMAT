@@ -6,6 +6,7 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import android.app.Activity;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.net.Uri;
@@ -14,7 +15,12 @@ import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
 import android.os.*;
+import android.widget.Adapter;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.Spinner;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.example.doormat_skeleton.Helpers.CameraPermissionHelper;
@@ -48,6 +54,7 @@ import com.google.ar.sceneform.rendering.ModelRenderable;
 import com.google.ar.sceneform.ux.ArFragment;
 import com.google.ar.sceneform.ux.TransformableNode;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 
 public class ViewMode extends AppCompatActivity {
@@ -65,7 +72,11 @@ public class ViewMode extends AppCompatActivity {
     LatLng latLng;
     double lat;
     double lon;
+    String colorChoice;
+    String shapeChoice;
 
+    Spinner shapeSpinner;
+    Spinner colorSpinner;
 
 
     private enum AppAnchorState {
@@ -80,6 +91,13 @@ public class ViewMode extends AppCompatActivity {
 
 
 
+    ArrayList<Integer> shapeList = new ArrayList<>();
+    ArrayList<Integer> colorList = new ArrayList<>();
+    String[] shapeArray = {"Sphere", "Cube", "Cylinder"};
+    String[] colorArray = {"Blue", "Green", "Yellow", "Red"};
+
+
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -91,6 +109,8 @@ public class ViewMode extends AppCompatActivity {
         HashMap<String, String> user = sessionManager.getUserDetail();
         mName = user.get(sessionManager.USERNAME);
 
+
+
         Button clear = findViewById(R.id.clear);
         Button finish = findViewById(R.id.finish);
         finish.setVisibility(View.GONE);
@@ -98,6 +118,7 @@ public class ViewMode extends AppCompatActivity {
         latLng = getIntent().getExtras().getParcelable("LatLng");
         lat = latLng.latitude;
         lon = latLng.longitude;
+
 
         clear.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -123,6 +144,8 @@ public class ViewMode extends AppCompatActivity {
                 }
             }
         });
+
+
 
         MaterialFactory.makeOpaqueWithColor(this, new Color(android.graphics.Color.BLUE))
                 .thenAccept(material -> {
@@ -233,6 +256,13 @@ public class ViewMode extends AppCompatActivity {
         node.setParent(anchorNode);
         fragment.getArSceneView().getScene().addChild(anchorNode);
         node.select();
+    }
+
+    private void setObject(String color, String shape){
+        MaterialFactory.makeOpaqueWithColor(this, new Color(android.graphics.Color.BLUE))
+                .thenAccept(material -> {
+                    sphereRenderable = ShapeFactory.makeSphere(0.1f, new Vector3(0.0f,0.15f, 0.0f ),material);
+                });
     }
 
 }
