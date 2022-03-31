@@ -31,7 +31,9 @@ public class StoreManager {
                              boolean isFound,
                              double lat,
                              double lon,
-                             String username) {
+                             String username,
+                             String color,
+                             String shape) {
         int foundVal;
         SharedPreferences sharedPrefs = activity.getPreferences(Context.MODE_PRIVATE);
         sharedPrefs.edit().putString(KEY_PREFIX + doormat_id, cloudAnchorId).apply();
@@ -57,8 +59,8 @@ public class StoreManager {
                 data[1] = String.valueOf(lat);
                 data[2] = String.valueOf(lon);
                 data[3] = username;
-                data[4] = "default_shape";
-                data[5] = "default_color";
+                data[4] = shape;
+                data[5] = color;
                 PutData putData = new PutData("http://34.203.214.232/mysite/addmarker.php", "POST", field, data);
                 if (putData.startPut()) {
                     if (putData.onComplete()) {

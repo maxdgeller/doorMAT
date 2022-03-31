@@ -19,6 +19,7 @@ import android.widget.Adapter;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.ImageButton;
 import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -62,8 +63,14 @@ public class ViewMode extends AppCompatActivity {
     private ArFragment arFragment;
     private ModelRenderable sphereRenderable;
     private Anchor cloudAnchor;
-    private Button clear;
-    private Button finish;
+    private ImageButton clear;
+    private ImageButton finish;
+    private ImageButton sphereBtn;
+    private ImageButton cubeBtn;
+    private ImageButton cylinderBtn;
+    private ImageButton redBtn;
+    private ImageButton blueBtn;
+    private ImageButton greenBtn;
     private FloatingActionButton back_btn;
     SessionManager sessionManager;
     String mName;
@@ -72,11 +79,13 @@ public class ViewMode extends AppCompatActivity {
     LatLng latLng;
     double lat;
     double lon;
-    String colorChoice;
-    String shapeChoice;
+    String colorChoice = "blue";
+    String shapeChoice = "sphere";
 
     Spinner shapeSpinner;
     Spinner colorSpinner;
+
+    Color FINAL_COLOR;
 
 
     private enum AppAnchorState {
@@ -91,11 +100,6 @@ public class ViewMode extends AppCompatActivity {
 
 
 
-    ArrayList<Integer> shapeList = new ArrayList<>();
-    ArrayList<Integer> colorList = new ArrayList<>();
-    String[] shapeArray = {"Sphere", "Cube", "Cylinder"};
-    String[] colorArray = {"Blue", "Green", "Yellow", "Red"};
-
 
 
     @Override
@@ -109,10 +113,17 @@ public class ViewMode extends AppCompatActivity {
         HashMap<String, String> user = sessionManager.getUserDetail();
         mName = user.get(sessionManager.USERNAME);
 
-
-
         Button clear = findViewById(R.id.clear);
         Button finish = findViewById(R.id.finish);
+        sphereBtn = findViewById(R.id.sphereBtn);
+        cubeBtn = findViewById(R.id.cubeBtn);
+        cylinderBtn = findViewById(R.id.cylinderBtn);
+        redBtn = findViewById(R.id.redBtn);
+        blueBtn = findViewById(R.id.blueBtn);
+        greenBtn = findViewById(R.id.greenBtn);
+
+
+
         finish.setVisibility(View.GONE);
         FloatingActionButton back_btn = findViewById(R.id.back_btn);
         latLng = getIntent().getExtras().getParcelable("LatLng");
@@ -131,7 +142,7 @@ public class ViewMode extends AppCompatActivity {
         back_btn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                if(isPlaced == true) {
+                if(isPlaced) {
                     Intent intent = new Intent(ViewMode.this, MapActivity.class);
                     intent.putExtra("isPlaced", isPlaced);
                     setResult(Activity.RESULT_OK, intent);
@@ -145,6 +156,117 @@ public class ViewMode extends AppCompatActivity {
             }
         });
 
+        sphereBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                switch (colorChoice) {
+                    case "blue":
+                        MaterialFactory.makeOpaqueWithColor(getApplicationContext(), new Color(android.graphics.Color.BLUE))
+                                .thenAccept(material -> {
+                                    sphereRenderable = ShapeFactory.makeSphere(0.1f, new Vector3(0.0f, 0.15f, 0.0f), material);
+                                });
+                        shapeChoice = "sphere";
+                        break;
+                    case "red":
+                        MaterialFactory.makeOpaqueWithColor(getApplicationContext(), new Color(android.graphics.Color.RED))
+                                .thenAccept(material -> {
+                                    sphereRenderable = ShapeFactory.makeSphere(0.1f, new Vector3(0.0f, 0.15f, 0.0f), material);
+                                });
+                        shapeChoice = "sphere";
+                        break;
+                    case "green":
+                        MaterialFactory.makeOpaqueWithColor(getApplicationContext(), new Color(android.graphics.Color.GREEN))
+                                .thenAccept(material -> {
+                                    sphereRenderable = ShapeFactory.makeSphere(0.1f, new Vector3(0.0f, 0.15f, 0.0f), material);
+                                });
+                        shapeChoice = "sphere";
+                        break;
+                }
+            }
+        });
+
+        cubeBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                switch (colorChoice) {
+                    case "blue":
+                        MaterialFactory.makeOpaqueWithColor(getApplicationContext(), new Color(android.graphics.Color.BLUE))
+                                .thenAccept(material -> {
+                                    sphereRenderable = ShapeFactory.makeCube(new Vector3(0.25f, 0.25f, 0.25f), new Vector3(0.0f, 0.15f, 0.0f), material);
+                                });
+                        shapeChoice = "cube";
+                        break;
+                    case "red":
+                        MaterialFactory.makeOpaqueWithColor(getApplicationContext(), new Color(android.graphics.Color.RED))
+                                .thenAccept(material -> {
+                                    sphereRenderable = ShapeFactory.makeCube(new Vector3(0.25f, 0.25f, 0.25f), new Vector3(0.0f, 0.15f, 0.0f), material);
+                                });
+                        shapeChoice = "cube";
+                        break;
+                    case "green":
+                        MaterialFactory.makeOpaqueWithColor(getApplicationContext(), new Color(android.graphics.Color.GREEN))
+                                .thenAccept(material -> {
+                                    sphereRenderable = ShapeFactory.makeCube(new Vector3(0.25f, 0.25f, 0.25f), new Vector3(0.0f, 0.15f, 0.0f), material);
+                                });
+                        shapeChoice = "cube";
+                        break;
+                }
+            }
+        });
+
+        cylinderBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                switch (colorChoice) {
+                    case "blue":
+                        MaterialFactory.makeOpaqueWithColor(getApplicationContext(), new Color(android.graphics.Color.BLUE))
+                                .thenAccept(material -> {
+                                    sphereRenderable = ShapeFactory.makeCylinder(0.1f, 0.3f, new Vector3(0.0f, 0.15f, 0.0f), material);
+                                });
+                        shapeChoice = "cylinder";
+                        break;
+                    case "red":
+                        MaterialFactory.makeOpaqueWithColor(getApplicationContext(), new Color(android.graphics.Color.RED))
+                                .thenAccept(material -> {
+                                    sphereRenderable = ShapeFactory.makeCylinder(0.1f, 0.3f, new Vector3(0.0f, 0.15f, 0.0f), material);
+                                });
+                        shapeChoice = "cylinder";
+                        break;
+                    case "green":
+                        MaterialFactory.makeOpaqueWithColor(getApplicationContext(), new Color(android.graphics.Color.GREEN))
+                                .thenAccept(material -> {
+                                    sphereRenderable = ShapeFactory.makeCylinder(0.1f, 0.3f, new Vector3(0.0f, 0.15f, 0.0f), material);
+                                });
+                        shapeChoice = "cylinder";
+                        break;
+                }
+            }
+        });
+
+        redBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                colorChoice = "red";
+            }
+        });
+
+        blueBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                colorChoice = "blue";
+            }
+        });
+
+        greenBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                colorChoice = "green";
+            }
+        });
+
+
+
+        //make cylinder listener next, then color button listners to set "colorChoice" string to "blue, red or green"
 
 
         MaterialFactory.makeOpaqueWithColor(this, new Color(android.graphics.Color.BLUE))
@@ -153,6 +275,7 @@ public class ViewMode extends AppCompatActivity {
                 });
 
         arFragment = (CustomArFragment) getSupportFragmentManager().findFragmentById(R.id.ux_fragment);
+        assert arFragment != null;
         arFragment.getArSceneView().getScene().addOnUpdateListener(this::onUpdateFrame);
 
 
@@ -210,7 +333,9 @@ public class ViewMode extends AppCompatActivity {
                     isPlaced,
                     lat,
                     lon,
-                    mName);
+                    mName,
+                    colorChoice,
+                    shapeChoice);
 
             snackbarHelper.showMessageWithDismiss(this, "Anchor hosted. Cloud ID: " +
                     shortCode);
