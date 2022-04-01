@@ -6,12 +6,14 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import android.app.Activity;
 import android.content.Context;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.os.Handler;
 import android.preference.PreferenceManager;
 import android.util.Log;
 import android.view.View;
+import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -66,6 +68,13 @@ public class DashboardActivity extends DrawerBaseActivity {
         String mName = user.get(sessionManager.USERNAME);
 
         username.setText(mName);
+
+        Button mapBtn = findViewById(R.id.mapBtn);
+
+        mapBtn.setOnClickListener(view -> {
+            Intent intent = new Intent(this, MapActivity.class);
+            startActivity(intent);
+        });
 
     }
 
