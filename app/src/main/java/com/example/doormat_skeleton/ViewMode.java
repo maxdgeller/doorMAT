@@ -2,6 +2,7 @@ package com.example.doormat_skeleton;
 
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.work.Operation;
 
 
 import android.app.Activity;
@@ -23,6 +24,7 @@ import android.widget.ImageButton;
 import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
+
 
 import com.example.doormat_skeleton.Helpers.CameraPermissionHelper;
 import com.example.doormat_skeleton.Helpers.SnackbarHelper;
@@ -63,7 +65,8 @@ public class ViewMode extends AppCompatActivity {
     private ArFragment arFragment;
     private ModelRenderable sphereRenderable;
     private Anchor cloudAnchor;
-    private ImageButton clear;
+    private Button clear;
+    private Button resolveBtn;
     private ImageButton finish;
     private ImageButton sphereBtn;
     private ImageButton cubeBtn;
@@ -91,7 +94,9 @@ public class ViewMode extends AppCompatActivity {
     private enum AppAnchorState {
         NONE,
         HOSTING,
-        HOSTED
+        HOSTED,
+        RESOLVING,
+        RESOLVED
     }
 
     private AppAnchorState appAnchorState = AppAnchorState.NONE;
@@ -113,7 +118,8 @@ public class ViewMode extends AppCompatActivity {
         HashMap<String, String> user = sessionManager.getUserDetail();
         mName = user.get(sessionManager.USERNAME);
 
-        Button clear = findViewById(R.id.clear);
+        resolveBtn = findViewById(R.id.resolveBtn);
+        clear = findViewById(R.id.clear);
         Button finish = findViewById(R.id.finish);
         sphereBtn = findViewById(R.id.sphereBtn);
         cubeBtn = findViewById(R.id.cubeBtn);
@@ -136,6 +142,19 @@ public class ViewMode extends AppCompatActivity {
             public void onClick(View view) {
                 setCloudAnchor(null);
                 isPlaced = false;
+            }
+        });
+
+        resolveBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                if(cloudAnchor != null){
+                    snackbarHelper.showMessageWithDismiss(getParent(), "Please clear anchor");
+                    return;
+                }
+                ResolveDialogFragment dialog = new ResolveDialogFragment();
+                dialog.setOkListener(ViewMode.this::onResolveOkPressed);
+                dialog.show(getSupportFragmentManager(), "Resolve");
             }
         });
 
@@ -315,35 +334,64 @@ public class ViewMode extends AppCompatActivity {
 
 
     private synchronized void checkUpdatedAnchor(){
-        if(appAnchorState != AppAnchorState.HOSTING){
+        if(appAnchorState != AppAnchorState.HOSTING && appAnchorState != AppAnchorState.RESOLVING){
             return;
         }
         Anchor.CloudAnchorState cloudAnchorState = cloudAnchor.getCloudAnchorState();
-        if(cloudAnchorState.isError()){
-            snackbarHelper.showMessageWithDismiss(this, "Error hosting... " +
-                    cloudAnchorState);
-            Toast.makeText(this,"Error Hosting...", Toast.LENGTH_LONG).show();
-            appAnchorState = AppAnchorState.NONE;
-        }
-        else if(cloudAnchorState == Anchor.CloudAnchorState.SUCCESS){
-            int shortCode = storeManager.nextShortCode(this);
-            storeManager.storeUsingShortCode(this,
-                    shortCode,
-                    cloudAnchor.getCloudAnchorId(),
-                    isPlaced,
-                    lat,
-                    lon,
-                    mName,
-                    colorChoice,
-                    shapeChoice);
+        if(appAnchorState == AppAnchorState.HOSTING) {
+            if (cloudAnchorState.isError()) {
+                snackbarHelper.showMessageWithDismiss(this, "Error hosting... " +
+                        cloudAnchorState);
+                Toast.makeText(this, "Error Hosting...", Toast.LENGTH_LONG).show();
+                appAnchorState = AppAnchorState.NONE;
+            } else if (cloudAnchorState == Anchor.CloudAnchorState.SUCCESS) {
+                int shortCode = storeManager.nextShortCode(this);
+                storeManager.storeUsingShortCode(this,
+                        shortCode,
+                        cloudAnchor.getCloudAnchorId(),
+                        isPlaced,
+                        lat,
+                        lon,
+                        mName,
+                        colorChoice,
+                        shapeChoice);
 
-            snackbarHelper.showMessageWithDismiss(this, "Anchor hosted. Cloud ID: " +
-                    shortCode);
-            Toast.makeText(this,"Anchor hosted. Cloud ID: " + shortCode, Toast.LENGTH_LONG).show();
-            appAnchorState = AppAnchorState.HOSTED;
+                snackbarHelper.showMessageWithDismiss(this, "Anchor hosted. Cloud ID: " +
+                        shortCode);
+                Toast.makeText(this, "Anchor hosted. Cloud ID: " + shortCode, Toast.LENGTH_LONG).show();
+                appAnchorState = AppAnchorState.HOSTED;
 
-            //i think the code to add the anchor's lat, long, and id to the database should go here
+                //i think the code to add the anchor's lat, long, and id to the database should go here
+            }
         }
+        else if(appAnchorState == AppAnchorState.RESOLVING){
+            if (cloudAnchorState.isError()) {
+                snackbarHelper.showMessageWithDismiss(this, "Error resolving... " +
+                        cloudAnchorState);
+                Toast.makeText(this, "Error resolving...", Toast.LENGTH_LONG).show();
+                appAnchorState = AppAnchorState.NONE;
+            } else if(cloudAnchorState == Anchor.CloudAnchorState.SUCCESS){
+                Toast.makeText(this, "Doormat resolved.", Toast.LENGTH_LONG).show();
+                appAnchorState = AppAnchorState.RESOLVED;
+            }
+        }
+    }
+
+    public void onResolveOkPressed(String dialogValue){
+        int shortCode = Integer.parseInt(dialogValue);
+        String cloudAnchorId = storeManager.getCloudAnchorID(this, shortCode);
+        Anchor resolvedAnchor = arFragment.getArSceneView().getSession().resolveCloudAnchor(cloudAnchorId);
+        setCloudAnchor(resolvedAnchor);
+
+        AnchorNode anchorNode = new AnchorNode(resolvedAnchor);
+        anchorNode.setParent(arFragment.getArSceneView().getScene());
+
+        TransformableNode sphere = new TransformableNode(arFragment.getTransformationSystem());
+        sphere.setParent(anchorNode);
+        sphere.setRenderable(sphereRenderable);
+        sphere.select();
+        Toast.makeText(ViewMode.this, "Resolving doormat...", Toast.LENGTH_SHORT).show();
+        appAnchorState = AppAnchorState.RESOLVING;
     }
 
 

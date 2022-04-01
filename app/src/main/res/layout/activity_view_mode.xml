@@ -7,14 +7,6 @@
     tools:context=".ViewMode">
 
 
-    <fragment
-        android:id="@+id/ux_fragment"
-        android:name="com.example.doormat_skeleton.CustomArFragment"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        tools:layout_editor_absoluteX="63dp"
-        tools:layout_editor_absoluteY="0dp" />
-
     <!--    <Button-->
     <!--        android:id="@+id/place"-->
     <!--        android:layout_width="wrap_content"-->
@@ -27,6 +19,14 @@
     <!--        app:layout_constraintTop_toTopOf="parent"-->
     <!--        app:layout_constraintVertical_bias="0.704" />-->
 
+    <fragment
+        android:id="@+id/ux_fragment"
+        android:name="com.example.doormat_skeleton.CustomArFragment"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        tools:layout_editor_absoluteX="-16dp"
+        tools:layout_editor_absoluteY="0dp" />
+
     <Button
         android:id="@+id/clear"
         android:layout_width="wrap_content"
@@ -34,10 +34,10 @@
         android:text="@string/clear"
         app:layout_constraintBottom_toBottomOf="@+id/ux_fragment"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.95"
+        app:layout_constraintHorizontal_bias="0.498"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.058" />
+        app:layout_constraintVertical_bias="0.07" />
 
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/back_btn"
@@ -135,6 +135,18 @@
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintVertical_bias="0.424"
         app:srcCompat="@drawable/ic_green" />
+
+    <Button
+        android:id="@+id/resolveBtn"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/resolve"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.764"
+        app:layout_constraintStart_toEndOf="@+id/clear"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_bias="0.07" />
 
 
 </androidx.constraintlayout.widget.ConstraintLayout>
