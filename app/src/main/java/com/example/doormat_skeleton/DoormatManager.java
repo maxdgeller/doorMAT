@@ -67,7 +67,7 @@ public class DoormatManager {
                 Toast.makeText(activity.getApplicationContext(), "Nearby doormats retrieved.", Toast.LENGTH_SHORT).show();
                 try {
                     JSONObject respObj = new JSONObject(response);
-                    Toast.makeText(activity.getApplicationContext(), respObj.toString(), Toast.LENGTH_LONG).show();
+                    //Toast.makeText(activity.getApplicationContext(), respObj.toString(), Toast.LENGTH_LONG).show();
                 } catch (JSONException e) {
                     e.printStackTrace();
                 }

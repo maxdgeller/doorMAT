@@ -113,6 +113,8 @@ public class MapActivity extends DrawerBaseActivity implements OnMapReadyCallbac
         //getGeofencingClient returns a GeofencingClient instance
         geofencingClient = LocationServices.getGeofencingClient(this);
         geofenceHelper = new GeofenceHelper(this);
+
+
     }
 
     @Override
@@ -376,6 +378,7 @@ public class MapActivity extends DrawerBaseActivity implements OnMapReadyCallbac
 
         nearbyAnchorLatLngStrings = sharedPref.getStringSet("nearby", DEFAULT_SET);
 
+
         nearbyAnchorLatLngs.clear();
         for (String latLngStr : nearbyAnchorLatLngStrings) {
             nearbyAnchorLatLngs.add(stringToLatLng(latLngStr));
@@ -574,5 +577,6 @@ public class MapActivity extends DrawerBaseActivity implements OnMapReadyCallbac
         SharedPreferences.Editor editor = getPreferences(MODE_PRIVATE).edit();
         editor.putString(KEY_CONNECTIONS, connectionsJSONString);
         editor.commit();
+
     }
 }
