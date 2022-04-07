@@ -38,7 +38,6 @@ import com.google.ar.sceneform.rendering.ShapeFactory;
 import com.google.ar.sceneform.rendering.ModelRenderable;
 import com.google.ar.sceneform.ux.TransformableNode;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 
 public class ViewMode extends AppCompatActivity {
@@ -298,7 +297,6 @@ public class ViewMode extends AppCompatActivity {
                 Toast.makeText(this, "Anchor hosted. Cloud ID: " + shortCode, Toast.LENGTH_LONG).show();
                 appAnchorState = AppAnchorState.HOSTED;
 
-                //i think the code to add the anchor's lat, long, and id to the database should go here
             }
         }
         else if(appAnchorState == AppAnchorState.RESOLVING){

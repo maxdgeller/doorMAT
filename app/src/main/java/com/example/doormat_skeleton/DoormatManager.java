@@ -3,6 +3,7 @@ package com.example.doormat_skeleton;
 import static android.content.ContentValues.TAG;
 
 import android.app.Activity;
+import android.content.Context;
 import android.os.Handler;
 import android.util.Log;
 import android.view.View;
@@ -37,13 +38,12 @@ public class DoormatManager {
         this.callback = callback;
     }
 
-    public void getDoormats(Activity activity, double lat, double lon) {
+    public void getDoormats(Context context, double lat, double lon) {
         // url to post our data
         String url = "http://34.203.214.232/mysite/fetchdoormats.php";
 
-
         // creating a new variable for our request queue
-        RequestQueue queue = Volley.newRequestQueue(activity.getApplicationContext());
+        RequestQueue queue = Volley.newRequestQueue(context.getApplicationContext());
 
         // on below line we are calling a string
         // request method to post the data to our API
@@ -64,10 +64,10 @@ public class DoormatManager {
 
 
                 // on below line we are displaying a success toast message.
-                Toast.makeText(activity.getApplicationContext(), "Nearby doormats retrieved.", Toast.LENGTH_SHORT).show();
+                Toast.makeText(context.getApplicationContext(), "Nearby doormats retrieved.", Toast.LENGTH_SHORT).show();
                 try {
                     JSONObject respObj = new JSONObject(response);
-                    Toast.makeText(activity.getApplicationContext(), respObj.toString(), Toast.LENGTH_LONG).show();
+//                    Toast.makeText(context.getApplicationContext(), respObj.toString(), Toast.LENGTH_LONG).show();
                 } catch (JSONException e) {
                     e.printStackTrace();
                 }
@@ -76,7 +76,7 @@ public class DoormatManager {
             @Override
             public void onErrorResponse(VolleyError error) {
                 // method to handle errors.
-                Toast.makeText(activity.getApplicationContext(), "Fail to get response = " + error, Toast.LENGTH_SHORT).show();
+                Toast.makeText(context.getApplicationContext(), "Fail to get response = " + error, Toast.LENGTH_SHORT).show();
             }
         }) {
             @Override

@@ -7,10 +7,7 @@ import androidx.appcompat.widget.Toolbar;
 import androidx.core.view.GravityCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 
-import android.app.Activity;
-import android.app.Notification;
 import android.content.Intent;
-import android.os.Bundle;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.FrameLayout;
@@ -51,8 +48,14 @@ public class DrawerBaseActivity extends AppCompatActivity implements NavigationV
         drawerLayout.closeDrawer(GravityCompat.START);
         switch (item.getItemId()){
             case R.id.nav_map:
-                startActivity(new Intent( this, MapActivity.class));
-                overridePendingTransition(0,0);
+                if (LocationApplication.isFineLocationGranted(this) || LocationApplication.isCoarseLocationGranted(this)) {
+                    startActivity(new Intent( this, MapActivity.class));
+                    overridePendingTransition(0,0);
+                }
+                else {
+                    LocationApplication locationApplication = (LocationApplication) getApplication();
+                    locationApplication.foregroundPermissionNeededAlert(this);
+                }
                 break;
             case R.id.nav_logout:
                 startActivity(new Intent( this, MainActivity.class));
