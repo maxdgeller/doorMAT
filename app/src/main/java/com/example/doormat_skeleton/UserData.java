@@ -1,19 +1,20 @@
 package com.example.doormat_skeleton;
 
-import java.util.List;
+import java.util.HashSet;
 
+//class for doormat objects.
 //class for doormat objects.
 
 public class UserData {
 
-    private List<Doormat> data;
+    private HashSet<Doormat> data;
 
-    //this allows us to return a list of all doormats pulled from the database.
-    public List<Doormat> getData() {
+    //this allows us to return a HashSet of all doormats pulled from the database.
+    public HashSet<Doormat> getData() {
         return data;
     }
 
-    public void setData(List<Doormat> data) {
+    public void setData(HashSet<Doormat> data) {
         this.data = data;
     }
 
