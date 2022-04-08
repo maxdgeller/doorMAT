@@ -306,59 +306,38 @@ public class LocationApplication extends Application implements Application.Acti
         return mLastLocation;
     }
 
-    public static double distance(Location lastLocation, Location newLocation, boolean useElevation) {
-
-        double lat1 = lastLocation.getLatitude();
-        double lat2 = newLocation.getLatitude();
-        double lon1 = lastLocation.getLongitude();
-        double lon2 = newLocation.getLongitude();
-        double el1 = lastLocation.getAltitude();
-        double el2 = newLocation.getAltitude();
-
-        final int R = 6371; // Radius of the earth
-
-        double latDistance = Math.toRadians(lat2 - lat1);
-        double lonDistance = Math.toRadians(lon2 - lon1);
-        double a = Math.sin(latDistance / 2) * Math.sin(latDistance / 2)
-                + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
-                * Math.sin(lonDistance / 2) * Math.sin(lonDistance / 2);
-        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-        double distance = R * c * 1000; // convert to meters
-
-        if (useElevation) {
-            double height = el1 - el2;
-            distance = Math.pow(distance, 2) + Math.pow(height, 2);
-            return Math.sqrt(distance);
-        }
-        return distance;
+    //an estimation that should be precise enough for the small distances we're using
+    public static double distance(double lat1, double lat2, double lng1, double lng2) {
+        return Math.sqrt(Math.pow(latDistance(lat1, lat2), 2) +
+                Math.pow(lngDistance(lng1, lng2, lat1), 2));
     }
-
+    //distance in meters between lat1 and lat2
+    public static double latDistance(double lat1, double lat2) {
+        return Math.abs((lat1 - lat2) * 111320);
+    }
+    //distance in meters between lng1 and lng2
+    public static double lngDistance(double lng1, double lng2, double lat1) {
+        return Math.abs(lng1 - lng2) * 111320 * Math.cos(lat1); //distance in meters between lng1 and lng2
+    }
 
     public LocationCallback mLocationCallback = new LocationCallback() {
         @Override
         public void onLocationResult(LocationResult locationResult) {
 
             mLastLocation = locationResult.getLastLocation();
-            Log.i(TAG, "onLocationResult: " + mLastLocation.getLatitude() + " " + mLastLocation.getLongitude());
+            double lat1 = mLastLocation.getLatitude();
+            double lng1 =  mLastLocation.getLongitude();
+            Log.i(TAG, "onLocationResult: " + lat1 + " " + lng1);
 
-            boolean isNewLocation;
-            if (locationOfSearch == null) {
-                isNewLocation = true;
-            } else {
-                isNewLocation = distance(locationOfSearch, mLastLocation, false) >= SEARCH_RADIUS - ON_MAP_RADIUS;
-            }
+            double distFromSearch = distance(lat1, locationOfSearch.getLatitude(), lng1, locationOfSearch.getLongitude());
 
-            if (isNewLocation) {
-                // search from database if far enough away or no search performed yet
+            if ((locationOfSearch == null) || (distFromSearch >= SEARCH_RADIUS - (ON_MAP_RADIUS * 1.5))) {
+                // search from database if far enough away, or no search performed yet
                 searchForDoormats();
             }
-            else {
-                GoogleMap map = MapActivity.getMap();
-                if (map != null) {
-                    updateCirclesVisibility(map);
-                }
+            else if ((MapActivity.getMap() != null) && foregroundActivities.contains("MapActivity")) {
+                    updateCirclesVisibility(MapActivity.getMap());
             }
-
             manageLocationUpdates();
         }
     };
@@ -568,20 +547,46 @@ public class LocationApplication extends Application implements Application.Acti
 
         //set alpha of circles lower if they're farther away,
         //and make them invisible if they're more than ON_MAP_RADIUS away from user.
-        Location locationOfCircle = new Location("");
-        int modifiedAlpha;
         for (Circle c : circles) {
-            locationOfCircle.setLatitude(c.getCenter().latitude);
-            locationOfCircle.setLongitude(c.getCenter().longitude);
-
-            double dist = distance(mLastLocation, locationOfCircle, false);
-            modifiedAlpha = Math.max((int) (alphaStroke * ((ON_MAP_RADIUS - dist) / ON_MAP_RADIUS)), 0);
-            c.setStrokeColor(Color.argb(modifiedAlpha, Color.red(color), Color.green(color), Color.blue(color)));
-            modifiedAlpha = Math.max((int) (alphaFill * ((ON_MAP_RADIUS - dist) / ON_MAP_RADIUS)), 0);
-            c.setFillColor(Color.argb(modifiedAlpha, Color.red(color), Color.green(color), Color.blue(color)));
-            if (dist >= ON_MAP_RADIUS) {
+            double dist = distance(mLastLocation.getLatitude(), c.getCenter().latitude, mLastLocation.getLongitude(), c.getCenter().longitude);
+            if (dist >= ON_MAP_RADIUS && c.isVisible()) {
                 c.setVisible(false);
             }
+            else {
+                double ratio = (ON_MAP_RADIUS - dist) / ON_MAP_RADIUS;
+                c.setStrokeColor(Color.argb((int) (alphaStroke * ratio), Color.red(color), Color.green(color), Color.blue(color)));
+                c.setFillColor(Color.argb((int) (alphaFill * ratio), Color.red(color), Color.green(color), Color.blue(color)));
+                if (!c.isVisible()) {
+                    c.setVisible(true);
+                }
+            }
         }
+    }
+
+    //unnecessarily complex except for huge distances; avoid using until we have a use for it
+    public static double distanceOnASphere(Location lastLocation, Location newLocation, boolean useElevation) {
+
+        double lat1 = lastLocation.getLatitude();
+        double lat2 = newLocation.getLatitude();
+        double lon1 = lastLocation.getLongitude();
+        double lon2 = newLocation.getLongitude();
+
+        final int R = 6371; // Radius of the earth
+
+        double latDistance = Math.toRadians(lat2 - lat1);
+        double lonDistance = Math.toRadians(lon2 - lon1);
+        double a = Math.sin(latDistance / 2) * Math.sin(latDistance / 2)
+                + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
+                * Math.pow(Math.sin(lonDistance / 2), 2);
+        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        double distance = R * c * 1000; // convert to meters
+
+        if (useElevation) {
+            double el1 = lastLocation.getAltitude();
+            double el2 = newLocation.getAltitude();
+            distance = Math.pow(distance, 2) + Math.pow(el1 - el2, 2);
+            return Math.sqrt(distance);
+        }
+        return distance;
     }
 }
