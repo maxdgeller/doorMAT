@@ -19,6 +19,7 @@ import org.json.JSONObject;
 
 import java.lang.reflect.Type;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 
 public class Profile extends DrawerBaseActivity implements DoormatManager.VolleyCallback {
@@ -27,7 +28,7 @@ public class Profile extends DrawerBaseActivity implements DoormatManager.Volley
     ActivityDashboardBinding activityDashboardBinding;
     SessionManager sessionManager;
     DoormatManager doormatManager;
-    List<UserData.Doormat> mDoormats;
+    HashSet<UserData.Doormat> mDoormats;
     String mName;
 
 
@@ -60,9 +61,9 @@ public class Profile extends DrawerBaseActivity implements DoormatManager.Volley
         doormatManager.getDoormats(this, 28.135974884033203, -82.50953674316406);
         doormatManager.setVolleyCallback(this);
 
-        String connectionsJSONString = getPreferences(MODE_PRIVATE).getString(KEY_CONNECTIONS, null);
-        Type type = new TypeToken< List < UserData.Doormat >>() {}.getType();
-        mDoormats = new Gson().fromJson(connectionsJSONString, type);
+//        String connectionsJSONString = getPreferences(MODE_PRIVATE).getString(KEY_CONNECTIONS, null);
+//        Type type = new TypeToken< List < UserData.Doormat >>() {}.getType();
+//        mDoormats = new Gson().fromJson(connectionsJSONString, type);
 
         int placedMats = countMats();
 
@@ -76,21 +77,19 @@ public class Profile extends DrawerBaseActivity implements DoormatManager.Volley
         JSONObject obj = new JSONObject(result);
 
         UserData user_data = (UserData) new Gson().fromJson(obj.toString(), UserData.class);
-        List<UserData.Doormat> mDoormats = user_data.getData();
-        String connectionsJSONString = new Gson().toJson(mDoormats);
-        SharedPreferences.Editor editor = getPreferences(MODE_PRIVATE).edit();
-        editor.putString(KEY_CONNECTIONS, connectionsJSONString);
-        editor.commit();
+        mDoormats = user_data.getData();
+
     }
 
     public int countMats(){
         int placedMats = 0;
+        if(mDoormats != null) {
+            for (UserData.Doormat d : mDoormats) {
+                if (d.getCreated_by().equals(mName)) {
+                    placedMats++;
+                }
 
-        for(UserData.Doormat d: mDoormats){
-            if(d.getCreated_by().equals(mName)){
-                placedMats++;
             }
-
         }
         return placedMats;
     }

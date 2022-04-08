@@ -9,6 +9,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 
+import android.location.Location;
 import android.os.Bundle;
 
 import android.view.MotionEvent;
@@ -27,6 +28,7 @@ import com.google.ar.core.Anchor;
 import com.google.ar.core.HitResult;
 import com.google.ar.core.Plane;
 
+import com.google.ar.core.Session;
 import com.google.ar.sceneform.ux.ArFragment;
 import com.google.ar.sceneform.AnchorNode;
 import com.google.ar.sceneform.FrameTime;
@@ -54,8 +56,6 @@ public class ViewMode extends AppCompatActivity {
     private ModelRenderable redCylinder;
     private ModelRenderable greenCylinder;
     private Anchor cloudAnchor;
-    private ImageButton finish;
-    private FloatingActionButton back_btn;
     SessionManager sessionManager;
     String mName;
     private boolean isPlaced;
@@ -63,11 +63,14 @@ public class ViewMode extends AppCompatActivity {
     LatLng latLng;
     double lat;
     double lon;
+    double latitude;
+    double longitude;
     String colorChoice = "blue";
     String shapeChoice = "sphere";
+    Anchor anchor;
 
-    public ViewMode() {
-    }
+    LocationApplication locationApplication;
+
 
     private enum AppAnchorState {
         NONE,
@@ -111,53 +114,75 @@ public class ViewMode extends AppCompatActivity {
         lon = latLng.longitude;
 
 
+        locationApplication = (LocationApplication) getApplication();
+        Location location = locationApplication.getLastLocation();
+
+        latitude = location.getLatitude();
+        longitude = location.getLongitude();
+
+
         MaterialFactory.makeOpaqueWithColor(this, new Color(android.graphics.Color.BLUE))
-                .thenAccept(material -> sphereRenderable = ShapeFactory.makeSphere(0.1f, new Vector3(0.0f,0.15f, 0.0f ),material));
+                .thenAccept(material -> sphereRenderable = ShapeFactory.makeSphere(
+                        0.1f, new Vector3(0.0f,0.15f, 0.0f ),material));
 
 
         //Creating sphere models
         MaterialFactory.makeOpaqueWithColor(getApplicationContext(), new Color(android.graphics.Color.BLUE))
-                .thenAccept(material -> blueSphere = ShapeFactory.makeSphere(0.1f, new Vector3(0.0f, 0.15f, 0.0f), material));
+                .thenAccept(material -> blueSphere = ShapeFactory.makeSphere(
+                        0.1f, new Vector3(0.0f, 0.15f, 0.0f), material));
         shapeChoice = "sphere";
 
         MaterialFactory.makeOpaqueWithColor(getApplicationContext(), new Color(android.graphics.Color.RED))
-                .thenAccept(material -> redSphere = ShapeFactory.makeSphere(0.1f, new Vector3(0.0f, 0.15f, 0.0f), material));
+                .thenAccept(material -> redSphere = ShapeFactory.makeSphere(
+                        0.1f, new Vector3(0.0f, 0.15f, 0.0f), material));
         shapeChoice = "sphere";
 
         MaterialFactory.makeOpaqueWithColor(getApplicationContext(), new Color(android.graphics.Color.GREEN))
-                .thenAccept(material -> greenSphere = ShapeFactory.makeSphere(0.1f, new Vector3(0.0f, 0.15f, 0.0f), material));
+                .thenAccept(material -> greenSphere = ShapeFactory.makeSphere(
+                        0.1f, new Vector3(0.0f, 0.15f, 0.0f), material));
         shapeChoice = "sphere";
 
         //Creating cube models
         MaterialFactory.makeOpaqueWithColor(getApplicationContext(), new Color(android.graphics.Color.BLUE))
-                .thenAccept(material -> blueCube = ShapeFactory.makeCube(new Vector3(0.25f, 0.25f, 0.25f), new Vector3(0.0f, 0.15f, 0.0f), material));
+                .thenAccept(material -> blueCube = ShapeFactory.makeCube(
+                        new Vector3(0.25f, 0.25f, 0.25f), new Vector3(0.0f, 0.15f, 0.0f), material));
         shapeChoice = "cube";
 
         MaterialFactory.makeOpaqueWithColor(getApplicationContext(), new Color(android.graphics.Color.RED))
-                .thenAccept(material -> redCube = ShapeFactory.makeCube(new Vector3(0.25f, 0.25f, 0.25f), new Vector3(0.0f, 0.15f, 0.0f), material));
+                .thenAccept(material -> redCube = ShapeFactory.makeCube(
+                        new Vector3(0.25f, 0.25f, 0.25f),
+                        new Vector3(0.0f, 0.15f, 0.0f), material));
         shapeChoice = "cube";
 
         MaterialFactory.makeOpaqueWithColor(getApplicationContext(), new Color(android.graphics.Color.GREEN))
-                .thenAccept(material -> greenCube = ShapeFactory.makeCube(new Vector3(0.25f, 0.25f, 0.25f), new Vector3(0.0f, 0.15f, 0.0f), material));
+                .thenAccept(material -> greenCube = ShapeFactory.makeCube(
+                        new Vector3(0.25f, 0.25f, 0.25f),
+                        new Vector3(0.0f, 0.15f, 0.0f), material));
         shapeChoice = "cube";
 
         //Creating cylinder models
         MaterialFactory.makeOpaqueWithColor(getApplicationContext(), new Color(android.graphics.Color.BLUE))
-                .thenAccept(material -> blueCylinder = ShapeFactory.makeCylinder(0.1f, 0.3f, new Vector3(0.0f, 0.15f, 0.0f), material));
+                .thenAccept(material -> blueCylinder = ShapeFactory.makeCylinder(
+                        0.1f, 0.3f, new Vector3(0.0f, 0.15f, 0.0f), material));
         shapeChoice = "cylinder";
 
         MaterialFactory.makeOpaqueWithColor(getApplicationContext(), new Color(android.graphics.Color.RED))
-                .thenAccept(material -> redCylinder = ShapeFactory.makeCylinder(0.1f, 0.3f, new Vector3(0.0f, 0.15f, 0.0f), material));
+                .thenAccept(material -> redCylinder = ShapeFactory.makeCylinder(
+                        0.1f, 0.3f, new Vector3(0.0f, 0.15f, 0.0f), material));
         shapeChoice = "cylinder";
 
         MaterialFactory.makeOpaqueWithColor(getApplicationContext(), new Color(android.graphics.Color.GREEN))
-                .thenAccept(material -> greenCylinder = ShapeFactory.makeCylinder(0.1f, 0.3f, new Vector3(0.0f, 0.15f, 0.0f), material));
+                .thenAccept(material -> greenCylinder = ShapeFactory.makeCylinder(
+                        0.1f, 0.3f, new Vector3(0.0f, 0.15f, 0.0f), material));
         shapeChoice = "cylinder";
 
 
         clear.setOnClickListener(view -> {
             setCloudAnchor(null);
-            isPlaced = false;
+            if(cloudAnchor!=null) {
+                cloudAnchor.detach();
+                isPlaced = false;
+            }
         });
 
         resolveBtn.setOnClickListener(view -> {
@@ -184,53 +209,36 @@ public class ViewMode extends AppCompatActivity {
             }
         });
 
+
         sphereBtn.setOnClickListener(view -> {
-            switch (colorChoice) {
-                case "blue":
-                    sphereRenderable = blueSphere;
-                    break;
-                case "red":
-                    sphereRenderable = redSphere;
-                    break;
-                case "green":
-                    sphereRenderable = greenSphere;
-                    break;
-            }
+            shapeChoice = "sphere";
+            setSphereRenderable();
         });
 
         cubeBtn.setOnClickListener(view -> {
-            switch (colorChoice) {
-                case "blue":
-                    sphereRenderable = blueCube;
-                    break;
-                case "red":
-                    sphereRenderable = redCube;
-                    break;
-                case "green":
-                    sphereRenderable = greenCube;
-                    break;
-            }
+            shapeChoice = "cube";
+            setSphereRenderable();
         });
 
         cylinderBtn.setOnClickListener(view -> {
-            switch (colorChoice) {
-                case "blue":
-                    sphereRenderable = blueCylinder;
-                    break;
-                case "red":
-                    sphereRenderable = redCylinder;
-                    break;
-                case "green":
-                    sphereRenderable = greenCylinder;
-                    break;
-            }
+            shapeChoice = "cylinder";
+            setSphereRenderable();
         });
 
-        redBtn.setOnClickListener(view -> colorChoice = "red");
+        redBtn.setOnClickListener(view ->{
+            colorChoice = "red";
+            setSphereRenderable();
+        });
 
-        blueBtn.setOnClickListener(view -> colorChoice = "blue");
+        blueBtn.setOnClickListener(view -> {
+            colorChoice = "blue";
+            setSphereRenderable();
+        });
 
-        greenBtn.setOnClickListener(view -> colorChoice = "green");
+        greenBtn.setOnClickListener(view -> {
+            colorChoice = "green";
+            setSphereRenderable();
+        });
 
 
         arFragment = (CustomArFragment) getSupportFragmentManager().findFragmentById(R.id.ux_fragment);
@@ -245,25 +253,25 @@ public class ViewMode extends AppCompatActivity {
                             appAnchorState != AppAnchorState.NONE) {
                         return;
                     }
-                    Anchor anchor = arFragment.getArSceneView().getSession().hostCloudAnchor(hitResult.createAnchor());
 
-                    setCloudAnchor(anchor);
+                    placeItem(hitResult);
 
-                    appAnchorState = AppAnchorState.HOSTING;
-                    Toast.makeText(this,"Now Hosting...", Toast.LENGTH_LONG).show();
+                    if(isPlaced){
+                        finish.setVisibility(View.VISIBLE);
+                    }
 
-                    AnchorNode anchorNode = new AnchorNode(anchor);
-                    anchorNode.setParent(arFragment.getArSceneView().getScene());
-
-                    TransformableNode sphere = new TransformableNode(arFragment.getTransformationSystem());
-                    sphere.setParent(anchorNode);
-                    sphere.setRenderable(sphereRenderable);
-                    isPlaced = true;
-                    sphere.select();
                 }
         );
 
+        finish.setOnClickListener(view -> {
+            Session session = arFragment.getArSceneView().getSession();
+            cloudAnchor = session.hostCloudAnchor(anchor);
+            setCloudAnchor(cloudAnchor);
+            appAnchorState = AppAnchorState.HOSTING;
+            Toast.makeText(getApplicationContext(),"Now Hosting...", Toast.LENGTH_LONG).show();
+        });
     }
+
 
     private void onUpdateFrame(FrameTime frameTime) {
         checkUpdatedAnchor();
@@ -286,8 +294,8 @@ public class ViewMode extends AppCompatActivity {
                         shortCode,
                         cloudAnchor.getCloudAnchorId(),
                         isPlaced,
-                        lat,
-                        lon,
+                        latitude,
+                        longitude,
                         mName,
                         colorChoice,
                         shapeChoice);
@@ -296,7 +304,6 @@ public class ViewMode extends AppCompatActivity {
                         shortCode);
                 Toast.makeText(this, "Anchor hosted. Cloud ID: " + shortCode, Toast.LENGTH_LONG).show();
                 appAnchorState = AppAnchorState.HOSTED;
-
             }
         }
         else if(appAnchorState == AppAnchorState.RESOLVING){
@@ -321,7 +328,7 @@ public class ViewMode extends AppCompatActivity {
         AnchorNode anchorNode = new AnchorNode(resolvedAnchor);
         anchorNode.setParent(arFragment.getArSceneView().getScene());
 
-        setSphereRenderable(colorChoice, shapeChoice);
+        setSphereRenderable();
 
         TransformableNode sphere = new TransformableNode(arFragment.getTransformationSystem());
         sphere.setParent(anchorNode);
@@ -335,23 +342,13 @@ public class ViewMode extends AppCompatActivity {
         if(cloudAnchor != null){
             cloudAnchor.detach();
         }
-
         cloudAnchor = newAnchor;
         appAnchorState = AppAnchorState.NONE;
         snackbarHelper.hide(this);
-
     }
 
-    private void addNodeToScene(ArFragment fragment, Anchor anchor, Renderable renderable){
-        AnchorNode anchorNode = new AnchorNode(anchor);
-        TransformableNode node = new TransformableNode(fragment.getTransformationSystem());
-        node.setRenderable(renderable);
-        node.setParent(anchorNode);
-        fragment.getArSceneView().getScene().addChild(anchorNode);
-        node.select();
-    }
 
-    private void setSphereRenderable(String colorChoice, String shapeChoice){
+    private void setSphereRenderable(){
         if(colorChoice.equals("blue") && shapeChoice.equals("sphere")){
             sphereRenderable = blueSphere;
         }else if(colorChoice.equals("red") && shapeChoice.equals("sphere")){
@@ -373,6 +370,17 @@ public class ViewMode extends AppCompatActivity {
         }
     }
 
+    private void placeItem(HitResult hitResult){
+        anchor = hitResult.createAnchor();
+        setCloudAnchor(anchor);
+        AnchorNode anchorNode = new AnchorNode(anchor);
+        anchorNode.setParent(arFragment.getArSceneView().getScene());
+        TransformableNode sphere = new TransformableNode(arFragment.getTransformationSystem());
+        sphere.setParent(anchorNode);
+        sphere.setRenderable(sphereRenderable);
+        isPlaced = true;
+        sphere.select();
+    }
 
 }
 
