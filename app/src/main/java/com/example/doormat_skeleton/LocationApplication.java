@@ -329,9 +329,7 @@ public class LocationApplication extends Application implements Application.Acti
             double lng1 =  mLastLocation.getLongitude();
             Log.i(TAG, "onLocationResult: " + lat1 + " " + lng1);
 
-            double distFromSearch = distance(lat1, locationOfSearch.getLatitude(), lng1, locationOfSearch.getLongitude());
-
-            if ((locationOfSearch == null) || (distFromSearch >= SEARCH_RADIUS - (ON_MAP_RADIUS * 1.5))) {
+            if ((locationOfSearch == null) || (distance(lat1, locationOfSearch.getLatitude(), lng1, locationOfSearch.getLongitude()) >= SEARCH_RADIUS - (ON_MAP_RADIUS * 1.3))) {
                 // search from database if far enough away, or no search performed yet
                 searchForDoormats();
             }

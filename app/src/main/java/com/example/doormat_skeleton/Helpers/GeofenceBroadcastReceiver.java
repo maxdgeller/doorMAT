@@ -6,6 +6,8 @@ import android.content.Intent;
 import android.util.Log;
 import android.widget.Toast;
 
+import com.example.doormat_skeleton.LocationApplication;
+import com.example.doormat_skeleton.MapActivity;
 import com.google.android.gms.location.Geofence;
 import com.google.android.gms.location.GeofencingEvent;
 
@@ -21,6 +23,7 @@ public class GeofenceBroadcastReceiver extends BroadcastReceiver {
         // an Intent broadcast.
 //        Toast.makeText(context, "Geofence triggered", Toast.LENGTH_SHORT).show();
 
+        NotificationHelper notificationHelper = new NotificationHelper(context);
         GeofencingEvent geofencingEvent = GeofencingEvent.fromIntent(intent);
         
         if (geofencingEvent.hasError()) {
@@ -39,6 +42,7 @@ public class GeofenceBroadcastReceiver extends BroadcastReceiver {
         switch (transitionType) {
             case Geofence.GEOFENCE_TRANSITION_ENTER:
                 Toast.makeText(context, "GEOFENCE_TRANSITION_ENTER", Toast.LENGTH_SHORT).show();
+                notificationHelper.sendHighPriorityNotification("GEOFENCE_TRANSITION_ENTER", "", LocationApplication.class);
                 break;
             case Geofence.GEOFENCE_TRANSITION_DWELL:
                 Toast.makeText(context, "GEOFENCE_TRANSITION_DWELL", Toast.LENGTH_SHORT).show();
