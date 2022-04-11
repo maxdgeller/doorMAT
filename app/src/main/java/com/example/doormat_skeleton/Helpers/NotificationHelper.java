@@ -15,9 +15,6 @@ import android.os.Build;
 import androidx.annotation.RequiresApi;
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;
-import androidx.core.content.ContextCompat;
-
-import java.util.Random;
 
 public class NotificationHelper extends ContextWrapper {
 
@@ -38,9 +35,9 @@ public class NotificationHelper extends ContextWrapper {
         NotificationChannel notificationChannel = new NotificationChannel(CHANNEL_ID, CHANNEL_NAME, NotificationManager.IMPORTANCE_HIGH);
         notificationChannel.enableLights(true);
         notificationChannel.enableVibration(true);
-        notificationChannel.setDescription("this is the description of the channel.");
         notificationChannel.setLightColor(Color.RED);
         notificationChannel.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
+
         NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
         manager.createNotificationChannel(notificationChannel);
     }
@@ -57,9 +54,11 @@ public class NotificationHelper extends ContextWrapper {
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setStyle(new NotificationCompat.BigTextStyle().setSummaryText("summary").setBigContentTitle(title).bigText(body))
                 .setContentIntent(pendingIntent)
-                .setAutoCancel(true)
+//                .setOngoing(true)
+                .setTimeoutAfter(900000) //notification disappears after 15 minutes at the latest
                 .build();
 
-        NotificationManagerCompat.from(this).notify(new Random().nextInt(), notification);
+//        NotificationManagerCompat.from(this).notify(new Random().nextInt(), notification);
+        NotificationManagerCompat.from(this).notify(0, notification);
     }
 }

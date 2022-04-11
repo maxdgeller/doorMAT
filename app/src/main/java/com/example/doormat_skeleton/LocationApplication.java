@@ -1,6 +1,7 @@
 package com.example.doormat_skeleton;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.Application;
 import android.app.PendingIntent;
@@ -25,6 +26,7 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
+import com.example.doormat_skeleton.Helpers.GeofenceBroadcastReceiver;
 import com.example.doormat_skeleton.Helpers.GeofenceHelper;
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.Geofence;
@@ -48,6 +50,7 @@ import com.google.gson.Gson;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -100,16 +103,22 @@ public class LocationApplication extends Application implements Application.Acti
 
     private GeofencingClient geoClient;
     private GeofenceHelper geoHelper;
+    private static final HashSet<Geofence> enteredGeofences = new HashSet<Geofence>();
 
     /*************** Database stuff, otherwise known as 'merciless torment' ****************/
 
     DoormatManager doormatManager = new DoormatManager();
-    HashSet<UserData.Doormat> doormats = new HashSet<UserData.Doormat>();
+    private static final HashSet<UserData.Doormat> doormats = new HashSet<UserData.Doormat>();
 
     /************************************ App lifecycle ************************************/
 
     private static final ArrayList<String> foregroundActivities = new ArrayList<String>();
     private static final AtomicBoolean appIsInBackground = new AtomicBoolean(true);
+    private static WeakReference<Activity> currentActivity = null;
+
+    //not 100% sure this won't cause a memory leak; if there ever seems to be one, this may be the culprit.
+    @SuppressLint("StaticFieldLeak")
+    private static Context sContext;
 
     //adjust WAIT_INTERVAL if the app ever seems confused about whether it's running in the background
     private static final long WAIT_INTERVAL = 600L;
@@ -119,6 +128,8 @@ public class LocationApplication extends Application implements Application.Acti
         super.onCreate();
         Log.i(TAG, "onCreate");
 
+        sContext = getApplicationContext();
+
         registerActivityLifecycleCallbacks(this);
 
         locationClient = LocationServices.getFusedLocationProviderClient(this);
@@ -126,6 +137,10 @@ public class LocationApplication extends Application implements Application.Acti
         geoHelper = new GeofenceHelper(this);
 
         manageLocationUpdates();
+    }
+
+    public static Context getContext() {
+        return sContext;
     }
 
     //the following methods are called when lifecycle methods of other activities are called
@@ -142,6 +157,7 @@ public class LocationApplication extends Application implements Application.Acti
     @Override
     public void onActivityResumed(@NonNull Activity activity) {
         foregroundActivities.add(activity.getClass().getSimpleName());
+        currentActivity = new WeakReference<Activity>(activity);
         determineForegroundStatus();
     }
 
@@ -175,6 +191,7 @@ public class LocationApplication extends Application implements Application.Acti
                 if(!appIsInBackground.get() && foregroundActivities.size() == 0) {
                     Log.i(TAG, "IN BACKGROUND");
                     appIsInBackground.set(true);
+                    currentActivity = null;
                     desiredLocationRequest = BACKGROUND_LOCATIONREQUEST;
                     manageLocationUpdates();
                 }
@@ -188,6 +205,26 @@ public class LocationApplication extends Application implements Application.Acti
             desiredLocationRequest = FOREGROUND_LOCATIONREQUEST;
             manageLocationUpdates();
         }
+    }
+
+    public static WeakReference<Activity> getCurrentActivity() {
+        return currentActivity;
+    }
+
+    public static HashSet<UserData.Doormat> getCurrentDoormats() {
+        return doormats;
+    }
+
+    public static HashSet<Geofence> getEnteredGeofences() {
+        return enteredGeofences;
+    }
+
+    public static void addEnteredGeofences(HashSet<Geofence> geofences) {
+        enteredGeofences.addAll(geofences);
+    }
+
+    public static void removeEnteredGeofences(HashSet<Geofence> geofences) {
+        enteredGeofences.removeAll(geofences);
     }
 
     public static AtomicBoolean getAppIsInBackground() {
@@ -336,6 +373,9 @@ public class LocationApplication extends Application implements Application.Acti
             else if ((MapActivity.getMap() != null) && foregroundActivities.contains("MapActivity")) {
                     updateCirclesVisibility(MapActivity.getMap());
             }
+
+            //
+
             manageLocationUpdates();
         }
     };
@@ -423,7 +463,9 @@ public class LocationApplication extends Application implements Application.Acti
         //set prevSearchDoormats as copy of doormats before doormats updated with getData()
         HashSet<UserData.Doormat> prevSearchDoormats = new HashSet<UserData.Doormat>(doormats);
 
-        doormats = user_data.getData();
+        doormats.clear();
+        doormats.addAll(user_data.getData());
+//        doormats = user_data.getData();
 
         HashSet<UserData.Doormat> newDoormats = getNewDoormats(prevSearchDoormats);
         HashSet<UserData.Doormat> oldDoormats = getOldDoormats(prevSearchDoormats);

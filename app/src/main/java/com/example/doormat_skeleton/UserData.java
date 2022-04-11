@@ -18,13 +18,17 @@ public class UserData {
         this.data = data;
     }
 
-    public static class Doormat {
+    public static class Doormat implements Comparable<Doormat> {
         private int doormat_id;
         private double latitude;
         private double longitude;
         private String created_by;
         private String shape;
         private String color;
+
+        //proximity to user; should be -1 except when manually setting it for comparison purposes
+        private double proximity = -1;
+
 
         //getters and setters
 
@@ -74,6 +78,26 @@ public class UserData {
 
         public void setColor(String color) {
             this.color = color;
+        }
+
+        public double getProximity() {
+            return proximity;
+        }
+
+        public void setProximity(double distance) {
+            proximity = distance;
+        }
+
+        //proximity of -1 is not a real proximity, so it goes at the end
+        @Override
+        public int compareTo(Doormat d) {
+            if (getProximity() == d.getProximity()) {
+                return 0;
+            }
+            if (getProximity() > d.getProximity() || getProximity() == -1) {
+                return 1;
+            }
+            return -1;
         }
     }
 }
