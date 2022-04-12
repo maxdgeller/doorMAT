@@ -19,7 +19,7 @@ public class UserData {
     }
 
     public static class Doormat implements Comparable<Doormat> {
-        private int doormat_id;
+        private String doormat_id;
         private double latitude;
         private double longitude;
         private String created_by;
@@ -32,11 +32,11 @@ public class UserData {
 
         //getters and setters
 
-        public int getDoormat_id() {
+        public String getDoormat_id() {
             return doormat_id;
         }
 
-        public void setDoormat_id(int doormat_id) {
+        public void setDoormat_id(String doormat_id) {
             this.doormat_id = doormat_id;
         }
 

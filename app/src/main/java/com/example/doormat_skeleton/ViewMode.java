@@ -242,7 +242,7 @@ public class ViewMode extends AppCompatActivity  {
                     String item = doormatSpinner.getSelectedItem().toString();
                     String[] parts = item.split(",");
                     Log.d(TAG, "onItemSelected: " + parts[0]);
-                    int shortCode = Integer.parseInt(parts[0]);
+                    String shortCode = parts[0];
                     colorChoice = parts[1];
                     shapeChoice = parts[2];
 
@@ -353,15 +353,13 @@ public class ViewMode extends AppCompatActivity  {
         Anchor.CloudAnchorState cloudAnchorState = cloudAnchor.getCloudAnchorState();
         if(appAnchorState == AppAnchorState.HOSTING) {
             if (cloudAnchorState.isError()) {
-                snackbarHelper.showMessageWithDismiss(this, "Error hosting... " +
-                        cloudAnchorState);
+
                 Toast.makeText(this, "Error Hosting...", Toast.LENGTH_LONG).show();
                 appAnchorState = AppAnchorState.NONE;
             } else if (cloudAnchorState == Anchor.CloudAnchorState.SUCCESS) {
-                int shortCode = storeManager.nextShortCode(this);
+//                int shortCode = storeManager.nextShortCode(this);
                 Log.d(TAG, "checkUpdatedAnchor: " + cloudAnchor.getCloudAnchorId());
-                storeManager.storeUsingShortCode(this,
-                        shortCode,
+                storeManager.storeDoormat(this,
                         cloudAnchor.getCloudAnchorId(),
                         isPlaced,
                         latitude,
@@ -370,9 +368,8 @@ public class ViewMode extends AppCompatActivity  {
                         colorChoice,
                         shapeChoice);
 
-                snackbarHelper.showMessageWithDismiss(this, "Anchor hosted. Cloud ID: " +
-                        shortCode);
-                Toast.makeText(this, "Anchor hosted. Cloud ID: " + shortCode, Toast.LENGTH_LONG).show();
+
+                Toast.makeText(this, "Anchor hosted. Cloud ID: " + cloudAnchor.getCloudAnchorId(), Toast.LENGTH_LONG).show();
                 appAnchorState = AppAnchorState.HOSTED;
             }
         }

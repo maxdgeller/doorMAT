@@ -45,16 +45,10 @@ public class DoormatManager {
         // creating a new variable for our request queue
         RequestQueue queue = Volley.newRequestQueue(context.getApplicationContext());
 
-        // on below line we are calling a string
-        // request method to post the data to our API
-        // in this we are calling a post method.
         StringRequest request = new StringRequest(Request.Method.POST, url, new com.android.volley.Response.Listener<String>() {
             @Override
             public void onResponse(String response) {
-                // inside on response method we are
-                // hiding our progress bar
-                // and setting data to edit text as empty
-
+                if(response.contains("Data not found")){ return; }
                 try {
                     callback.onSuccessResponse(response);
                 } catch (JSONException e) {
@@ -65,12 +59,12 @@ public class DoormatManager {
 
                 // on below line we are displaying a success toast message.
                 Toast.makeText(context.getApplicationContext(), "Nearby doormats retrieved.", Toast.LENGTH_SHORT).show();
-                try {
-                    JSONObject respObj = new JSONObject(response);
-//                    Toast.makeText(context.getApplicationContext(), respObj.toString(), Toast.LENGTH_LONG).show();
-                } catch (JSONException e) {
-                    e.printStackTrace();
-                }
+//                try {
+//                    JSONObject respObj = new JSONObject(response);
+////                    Toast.makeText(context.getApplicationContext(), respObj.toString(), Toast.LENGTH_LONG).show();
+//                } catch (JSONException e) {
+//                    e.printStackTrace();
+//                }
             }
         }, new com.android.volley.Response.ErrorListener() {
             @Override
