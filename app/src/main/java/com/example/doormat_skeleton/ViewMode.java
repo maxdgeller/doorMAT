@@ -1,6 +1,8 @@
 package com.example.doormat_skeleton;
 
 
+import static android.content.ContentValues.TAG;
+
 import androidx.appcompat.app.AppCompatActivity;
 
 import android.app.Activity;
@@ -12,15 +14,20 @@ import android.content.SharedPreferences;
 import android.location.Location;
 import android.os.Bundle;
 
+import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
 
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.ImageButton;
 
+import android.widget.Spinner;
 import android.widget.Toast;
 
 import com.example.doormat_skeleton.Helpers.SnackbarHelper;
+import com.google.android.gms.location.Geofence;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.ar.core.Anchor;
@@ -29,6 +36,7 @@ import com.google.ar.core.HitResult;
 import com.google.ar.core.Plane;
 
 import com.google.ar.core.Session;
+import com.google.ar.sceneform.rendering.ViewRenderable;
 import com.google.ar.sceneform.ux.ArFragment;
 import com.google.ar.sceneform.AnchorNode;
 import com.google.ar.sceneform.FrameTime;
@@ -40,11 +48,16 @@ import com.google.ar.sceneform.rendering.ShapeFactory;
 import com.google.ar.sceneform.rendering.ModelRenderable;
 import com.google.ar.sceneform.ux.TransformableNode;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
 
-public class ViewMode extends AppCompatActivity {
+public class ViewMode extends AppCompatActivity  {
 
     private ArFragment arFragment;
+
     private ModelRenderable sphereRenderable;
     private ModelRenderable blueSphere;
     private ModelRenderable greenSphere;
@@ -55,6 +68,7 @@ public class ViewMode extends AppCompatActivity {
     private ModelRenderable blueCylinder;
     private ModelRenderable redCylinder;
     private ModelRenderable greenCylinder;
+
     private Anchor cloudAnchor;
     SessionManager sessionManager;
     String mName;
@@ -69,7 +83,18 @@ public class ViewMode extends AppCompatActivity {
     String shapeChoice = "sphere";
     Anchor anchor;
 
+    HashSet<UserData.Doormat> mDoormats;
+    HashSet<UserData.Doormat> currentMats;
+    HashSet<Geofence> geofences;
+
+    boolean isEntered;
+
+    Spinner doormatSpinner;
+
+    List<String> spinnerList;
+
     LocationApplication locationApplication;
+
 
 
     private enum AppAnchorState {
@@ -79,6 +104,7 @@ public class ViewMode extends AppCompatActivity {
         RESOLVING,
         RESOLVED
     }
+
 
     private AppAnchorState appAnchorState = AppAnchorState.NONE;
     private final SnackbarHelper snackbarHelper = new SnackbarHelper();
@@ -96,8 +122,11 @@ public class ViewMode extends AppCompatActivity {
         mName = user.get(SessionManager.USERNAME);
 
         Button resolveBtn = findViewById(R.id.resolveBtn);
+        resolveBtn.setVisibility(View.GONE);
+
         Button clear = findViewById(R.id.clear);
         Button finish = findViewById(R.id.finish);
+
         ImageButton sphereBtn = findViewById(R.id.sphereBtn);
         ImageButton cubeBtn = findViewById(R.id.cubeBtn);
         ImageButton cylinderBtn = findViewById(R.id.cylinderBtn);
@@ -105,13 +134,14 @@ public class ViewMode extends AppCompatActivity {
         ImageButton blueBtn = findViewById(R.id.blueBtn);
         ImageButton greenBtn = findViewById(R.id.greenBtn);
 
-
+        doormatSpinner = findViewById(R.id.doormat_spinner);
+        doormatSpinner.setVisibility(View.GONE);
 
         finish.setVisibility(View.GONE);
         FloatingActionButton back_btn = findViewById(R.id.back_btn);
-        latLng = getIntent().getExtras().getParcelable("LatLng");
-        lat = latLng.latitude;
-        lon = latLng.longitude;
+//        latLng = getIntent().getExtras().getParcelable("LatLng");
+//        lat = latLng.latitude;
+//        lon = latLng.longitude;
 
 
         locationApplication = (LocationApplication) getApplication();
@@ -120,6 +150,17 @@ public class ViewMode extends AppCompatActivity {
         latitude = location.getLatitude();
         longitude = location.getLongitude();
 
+
+        mDoormats = LocationApplication.getCurrentDoormats();
+        geofences = LocationApplication.getEnteredGeofences();
+        currentMats = new HashSet<UserData.Doormat>();
+
+
+        checkEntered();
+        if(isEntered){
+            resolveBtn.setVisibility(View.VISIBLE);
+            addDoormats();
+        }
 
         MaterialFactory.makeOpaqueWithColor(this, new Color(android.graphics.Color.BLUE))
                 .thenAccept(material -> sphereRenderable = ShapeFactory.makeSphere(
@@ -190,9 +231,34 @@ public class ViewMode extends AppCompatActivity {
                 snackbarHelper.showMessageWithDismiss(getParent(), "Please clear anchor");
                 return;
             }
-            ResolveDialogFragment dialog = new ResolveDialogFragment();
-            dialog.setOkListener(ViewMode.this::onResolveOkPressed);
-            dialog.show(getSupportFragmentManager(), "Resolve");
+
+            ArrayAdapter<String> dataAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_spinner_dropdown_item, spinnerList);
+
+            doormatSpinner.setAdapter(dataAdapter);
+            doormatSpinner.setVisibility(View.VISIBLE);
+            doormatSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+                @Override
+                public void onItemSelected(AdapterView<?> adapterView, View view, int i, long l) {
+                    String item = doormatSpinner.getSelectedItem().toString();
+                    String[] parts = item.split(",");
+                    Log.d(TAG, "onItemSelected: " + parts[0]);
+                    int shortCode = Integer.parseInt(parts[0]);
+                    colorChoice = parts[1];
+                    shapeChoice = parts[2];
+
+                }
+
+                @Override
+                public void onNothingSelected(AdapterView<?> adapterView) {
+
+                }
+            });
+
+
+
+//            ResolveDialogFragment dialog = new ResolveDialogFragment();
+//            dialog.setOkListener(ViewMode.this::onResolveOkPressed);
+//            dialog.show(getSupportFragmentManager(), "Resolve");
         });
 
         back_btn.setOnClickListener(view -> {
@@ -254,6 +320,7 @@ public class ViewMode extends AppCompatActivity {
                         return;
                     }
 
+
                     placeItem(hitResult);
 
                     if(isPlaced){
@@ -273,6 +340,8 @@ public class ViewMode extends AppCompatActivity {
     }
 
 
+
+
     private void onUpdateFrame(FrameTime frameTime) {
         checkUpdatedAnchor();
     }
@@ -290,6 +359,7 @@ public class ViewMode extends AppCompatActivity {
                 appAnchorState = AppAnchorState.NONE;
             } else if (cloudAnchorState == Anchor.CloudAnchorState.SUCCESS) {
                 int shortCode = storeManager.nextShortCode(this);
+                Log.d(TAG, "checkUpdatedAnchor: " + cloudAnchor.getCloudAnchorId());
                 storeManager.storeUsingShortCode(this,
                         shortCode,
                         cloudAnchor.getCloudAnchorId(),
@@ -319,8 +389,8 @@ public class ViewMode extends AppCompatActivity {
         }
     }
 
-    public void onResolveOkPressed(String dialogValue){
-        int shortCode = Integer.parseInt(dialogValue);
+    public void onResolveOkPressed(int shortCode){
+
         String cloudAnchorId = storeManager.getCloudAnchorID(this, shortCode);
         Anchor resolvedAnchor = arFragment.getArSceneView().getSession().resolveCloudAnchor(cloudAnchorId);
         setCloudAnchor(resolvedAnchor);
@@ -382,6 +452,33 @@ public class ViewMode extends AppCompatActivity {
         sphere.select();
     }
 
+    private void checkEntered(){
+        if(geofences != null){
+            isEntered = true;
+        }else{
+            isEntered = false;
+        }
+    }
+
+    private void addDoormats(){
+        if(mDoormats != null){
+            for(Geofence g: geofences){
+                for(UserData.Doormat d: mDoormats){
+                    if(String.valueOf(d.getDoormat_id()).equals(g.getRequestId())){
+                        currentMats.add(d);
+                    }
+                }
+            }
+            spinnerList = new ArrayList<String>();
+            for(UserData.Doormat d: currentMats){
+                spinnerList.add(d.getDoormat_id() + ", " + d.getColor() + ", " + d.getShape());
+                Log.d(TAG, "addDoormats: " + spinnerList.toString());
+            }
+        }
+
+    }
+
 }
+
 
 
