@@ -36,6 +36,7 @@ import com.google.ar.core.Anchor;
 import com.google.ar.core.HitResult;
 import com.google.ar.core.Plane;
 
+import com.google.ar.core.Pose;
 import com.google.ar.core.Session;
 import com.google.ar.sceneform.rendering.ViewRenderable;
 import com.google.ar.sceneform.ux.ArFragment;
@@ -83,6 +84,8 @@ public class ViewMode extends AppCompatActivity  {
     double longitude;
     String colorChoice = "blue";
     String shapeChoice = "sphere";
+    String resolvedAnchorID;
+
     Anchor anchor;
 
     HashSet<UserData.Doormat> mDoormats;
@@ -107,8 +110,15 @@ public class ViewMode extends AppCompatActivity  {
         RESOLVED
     }
 
+    private enum ResolveState{
+        INSUFFICIENT,
+        SUFFICIENT,
+        GOOD
+    }
+
 
     private AppAnchorState appAnchorState = AppAnchorState.NONE;
+    private ResolveState resolveState = ResolveState.INSUFFICIENT;
     private final SnackbarHelper snackbarHelper = new SnackbarHelper();
     private final StoreManager storeManager = new StoreManager();
 
@@ -128,6 +138,8 @@ public class ViewMode extends AppCompatActivity  {
 
         Button clear = findViewById(R.id.clear);
         Button finish = findViewById(R.id.finish);
+        Button resolveFinish = findViewById(R.id.resolveFinish);
+        resolveFinish.setVisibility(View.GONE);
 
         ImageButton sphereBtn = findViewById(R.id.sphereBtn);
         ImageButton cubeBtn = findViewById(R.id.cubeBtn);
@@ -230,31 +242,36 @@ public class ViewMode extends AppCompatActivity  {
 
         resolveBtn.setOnClickListener(view -> {
             if(cloudAnchor != null){
-                snackbarHelper.showMessageWithDismiss(getParent(), "Please clear anchor");
                 return;
             }
 
-            ArrayAdapter<String> dataAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_spinner_dropdown_item, spinnerList);
 
-            doormatSpinner.setAdapter(dataAdapter);
-            doormatSpinner.setVisibility(View.VISIBLE);
-            doormatSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-                @Override
-                public void onItemSelected(AdapterView<?> adapterView, View view, int i, long l) {
-                    String item = doormatSpinner.getSelectedItem().toString();
-                    String[] parts = item.split(",");
-                    Log.d(TAG, "onItemSelected: " + parts[0]);
-                    String shortCode = parts[0];
-                    colorChoice = parts[1];
-                    shapeChoice = parts[2];
+            resolveStart();
 
-                }
-
-                @Override
-                public void onNothingSelected(AdapterView<?> adapterView) {
-
-                }
-            });
+//            ArrayAdapter<String> dataAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_spinner_dropdown_item, spinnerList);
+//
+//            doormatSpinner.setAdapter(dataAdapter);
+//            doormatSpinner.setVisibility(View.VISIBLE);
+//            doormatSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+//                @Override
+//                public void onItemSelected(AdapterView<?> adapterView, View view, int i, long l) {
+//                    String item = doormatSpinner.getSelectedItem().toString();
+//                    String[] parts = item.split(",");
+//                    Log.d(TAG, "onItemSelected: " + parts[0]);
+//                    resolvedAnchorID = parts[0];
+//                    colorChoice = parts[1].trim();
+//                    shapeChoice = parts[2].trim();
+//
+//                    Log.d(TAG, "onItemSelected: color: " + colorChoice + " shape: " + shapeChoice );
+//                    resolveFinish.setVisibility(View.VISIBLE);
+//
+//                }
+//
+//                @Override
+//                public void onNothingSelected(AdapterView<?> adapterView) {
+//
+//                }
+//            });
 
 
 
@@ -262,6 +279,7 @@ public class ViewMode extends AppCompatActivity  {
 //            dialog.setOkListener(ViewMode.this::onResolveOkPressed);
 //            dialog.show(getSupportFragmentManager(), "Resolve");
         });
+
 
         back_btn.setOnClickListener(view -> {
             if(isPlaced) {
@@ -332,6 +350,32 @@ public class ViewMode extends AppCompatActivity  {
                 }
         );
 
+        resolveFinish.setOnClickListener(view -> {
+
+            if(cloudAnchor != null){
+                Toast.makeText(this, "Please clear doormat first.", Toast.LENGTH_SHORT).show();
+                resolveFinish.setVisibility(View.GONE);
+                return;
+            }
+
+            Anchor resolvedAnchor = arFragment.getArSceneView().getSession().resolveCloudAnchor(resolvedAnchorID);
+            setCloudAnchor(resolvedAnchor);
+
+            AnchorNode anchorNode = new AnchorNode(resolvedAnchor);
+            anchorNode.setParent(arFragment.getArSceneView().getScene());
+
+            setSphereRenderable();
+
+            TransformableNode sphere = new TransformableNode(arFragment.getTransformationSystem());
+            sphere.setParent(anchorNode);
+            sphere.setRenderable(sphereRenderable);
+            sphere.select();
+            Toast.makeText(ViewMode.this, "Resolving doormat...", Toast.LENGTH_SHORT).show();
+            appAnchorState = AppAnchorState.RESOLVING;
+            resolveFinish.setVisibility(View.GONE);
+
+        });
+
         finish.setOnClickListener(view -> {
             Session session = arFragment.getArSceneView().getSession();
             cloudAnchor = session.hostCloudAnchor(anchor);
@@ -347,6 +391,7 @@ public class ViewMode extends AppCompatActivity  {
     private void onUpdateFrame(FrameTime frameTime) {
         checkUpdatedAnchor();
     }
+
 
     private synchronized void checkUpdatedAnchor(){
         if(appAnchorState != AppAnchorState.HOSTING && appAnchorState != AppAnchorState.RESOLVING){
@@ -370,42 +415,51 @@ public class ViewMode extends AppCompatActivity  {
                         colorChoice,
                         shapeChoice);
 
-
                 Toast.makeText(this, "Anchor hosted. Cloud ID: " + cloudAnchor.getCloudAnchorId(), Toast.LENGTH_LONG).show();
                 appAnchorState = AppAnchorState.HOSTED;
             }
         }
         else if(appAnchorState == AppAnchorState.RESOLVING){
             if (cloudAnchorState.isError()) {
-                snackbarHelper.showMessageWithDismiss(this, "Error resolving... " +
-                        cloudAnchorState);
+
                 Toast.makeText(this, "Error resolving...", Toast.LENGTH_LONG).show();
                 appAnchorState = AppAnchorState.NONE;
             } else if(cloudAnchorState == Anchor.CloudAnchorState.SUCCESS){
                 Toast.makeText(this, "Doormat resolved.", Toast.LENGTH_LONG).show();
                 appAnchorState = AppAnchorState.RESOLVED;
+                addToFoundAnchors(resolvedAnchorID);
             }
         }
     }
 
-    public void onResolveOkPressed(int shortCode){
+    private void resolveStart(){
+        ArrayAdapter<String> dataAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_spinner_dropdown_item, spinnerList);
 
-        String cloudAnchorId = storeManager.getCloudAnchorID(this, shortCode);
-        Anchor resolvedAnchor = arFragment.getArSceneView().getSession().resolveCloudAnchor(cloudAnchorId);
-        setCloudAnchor(resolvedAnchor);
+        doormatSpinner.setAdapter(dataAdapter);
+        doormatSpinner.setVisibility(View.VISIBLE);
+        doormatSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> adapterView, View view, int i, long l) {
+                String item = doormatSpinner.getSelectedItem().toString();
+                String[] parts = item.split(",");
+                Log.d(TAG, "onItemSelected: " + parts[0]);
+                resolvedAnchorID = parts[0];
+                colorChoice = parts[1].trim();
+                shapeChoice = parts[2].trim();
 
-        AnchorNode anchorNode = new AnchorNode(resolvedAnchor);
-        anchorNode.setParent(arFragment.getArSceneView().getScene());
+                Log.d(TAG, "onItemSelected: color: " + colorChoice + " shape: " + shapeChoice );
+                Button resolveFinish = findViewById(R.id.resolveFinish);
+                resolveFinish.setVisibility(View.VISIBLE);
 
-        setSphereRenderable();
+            }
 
-        TransformableNode sphere = new TransformableNode(arFragment.getTransformationSystem());
-        sphere.setParent(anchorNode);
-        sphere.setRenderable(sphereRenderable);
-        sphere.select();
-        Toast.makeText(ViewMode.this, "Resolving doormat...", Toast.LENGTH_SHORT).show();
-        appAnchorState = AppAnchorState.RESOLVING;
+            @Override
+            public void onNothingSelected(AdapterView<?> adapterView) {
+
+            }
+        });
     }
+
 
     private void setCloudAnchor(Anchor newAnchor){
         if(cloudAnchor != null){
@@ -459,6 +513,7 @@ public class ViewMode extends AppCompatActivity  {
         }
     }
 
+    //adds doormat objects in geofence to spinner list
     private void addDoormats(){
         if(mDoormats != null){
             for(Geofence g: geofences){
