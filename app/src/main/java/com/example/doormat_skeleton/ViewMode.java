@@ -97,6 +97,7 @@ public class ViewMode extends AppCompatActivity  {
     Spinner doormatSpinner;
 
     List<String> spinnerList;
+    List<String> anchorList;
 
     LocationApplication locationApplication;
 
@@ -242,6 +243,31 @@ public class ViewMode extends AppCompatActivity  {
 
         resolveBtn.setOnClickListener(view -> {
             if(cloudAnchor != null){
+                return;
+            }
+
+            if(spinnerList.size() == 1){
+                resolvedAnchorID = anchorList.get(0);
+                String item = spinnerList.get(0);
+                String[] parts = item.split(",");
+                colorChoice = parts[0].trim();
+                shapeChoice = parts[1].trim();
+
+                Anchor resolvedAnchor = arFragment.getArSceneView().getSession().resolveCloudAnchor(resolvedAnchorID);
+                setCloudAnchor(resolvedAnchor);
+
+                AnchorNode anchorNode = new AnchorNode(resolvedAnchor);
+                anchorNode.setParent(arFragment.getArSceneView().getScene());
+
+                setSphereRenderable();
+
+                TransformableNode sphere = new TransformableNode(arFragment.getTransformationSystem());
+                sphere.setParent(anchorNode);
+                sphere.setRenderable(sphereRenderable);
+                sphere.select();
+                Toast.makeText(ViewMode.this, "Resolving doormat...", Toast.LENGTH_SHORT).show();
+                appAnchorState = AppAnchorState.RESOLVING;
+
                 return;
             }
 
@@ -417,6 +443,7 @@ public class ViewMode extends AppCompatActivity  {
 
                 Toast.makeText(this, "Anchor hosted. Cloud ID: " + cloudAnchor.getCloudAnchorId(), Toast.LENGTH_LONG).show();
                 appAnchorState = AppAnchorState.HOSTED;
+                addToFoundAnchors(cloudAnchor.getCloudAnchorId());
             }
         }
         else if(appAnchorState == AppAnchorState.RESOLVING){
@@ -441,11 +468,13 @@ public class ViewMode extends AppCompatActivity  {
             @Override
             public void onItemSelected(AdapterView<?> adapterView, View view, int i, long l) {
                 String item = doormatSpinner.getSelectedItem().toString();
+                int pos = doormatSpinner.getSelectedItemPosition();
                 String[] parts = item.split(",");
-                Log.d(TAG, "onItemSelected: " + parts[0]);
-                resolvedAnchorID = parts[0];
-                colorChoice = parts[1].trim();
-                shapeChoice = parts[2].trim();
+//                Log.d(TAG, "onItemSelected: " + parts[0]);
+                resolvedAnchorID = anchorList.get(pos);
+                Log.d(TAG, "onItemSelected: " + resolvedAnchorID);
+                colorChoice = parts[0].trim();
+                shapeChoice = parts[1].trim();
 
                 Log.d(TAG, "onItemSelected: color: " + colorChoice + " shape: " + shapeChoice );
                 Button resolveFinish = findViewById(R.id.resolveFinish);
@@ -524,8 +553,10 @@ public class ViewMode extends AppCompatActivity  {
                 }
             }
             spinnerList = new ArrayList<String>();
+            anchorList = new ArrayList<String>();
             for(UserData.Doormat d: currentMats){
-                spinnerList.add(d.getDoormat_id() + ", " + d.getColor() + ", " + d.getShape());
+                spinnerList.add(d.getColor() + ", " + d.getShape());
+                anchorList.add(d.getDoormat_id());
                 Log.d(TAG, "addDoormats: " + spinnerList.toString());
             }
         }
