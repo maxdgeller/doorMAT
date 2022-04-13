@@ -1,6 +1,7 @@
 package com.example.doormat_skeleton;
 
 import java.util.HashSet;
+import java.util.Objects;
 
 //class for doormat objects.
 //class for doormat objects.
@@ -19,6 +20,8 @@ public class UserData {
     }
 
     public static class Doormat implements Comparable<Doormat> {
+
+        //fields for the database table
         private String doormat_id;
         private double latitude;
         private double longitude;
@@ -26,8 +29,11 @@ public class UserData {
         private String shape;
         private String color;
 
+        //fields not to be in the database
         //proximity to user; should be -1 except when manually setting it for comparison purposes
         private double proximity = -1;
+        //whether it's been found or not
+        private boolean found = false;
 
 
         //getters and setters
@@ -88,6 +94,14 @@ public class UserData {
             proximity = distance;
         }
 
+        public boolean isFound() {
+            return found;
+        }
+
+        public void setFound(boolean newFound) {
+            found = newFound;
+        }
+
         //proximity of -1 is not a real proximity, so it goes at the end
         @Override
         public int compareTo(Doormat d) {
@@ -98,6 +112,19 @@ public class UserData {
                 return 1;
             }
             return -1;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            Doormat doormat = (Doormat) o;
+            return getDoormat_id().equals(doormat.getDoormat_id());
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(getDoormat_id());
         }
     }
 }

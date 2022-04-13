@@ -21,6 +21,7 @@ import com.google.android.gms.maps.model.CameraPosition;
 import com.google.android.gms.maps.model.LatLng;
 
 import java.util.HashSet;
+import java.util.Set;
 
 public class MapActivity extends DrawerBaseActivity implements OnMapReadyCallback {
 
@@ -177,11 +178,9 @@ public class MapActivity extends DrawerBaseActivity implements OnMapReadyCallbac
         }
     }
 
-    //do we still need this variable?
 //    @Override
 //    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
 //        super.onActivityResult(requestCode, resultCode, data);
-//
 //        if (requestCode == VIEW_MODE_REQUEST_CODE) {
 //            if(resultCode == Activity.RESULT_OK){
 //                isPlaced = true;

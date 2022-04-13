@@ -8,6 +8,7 @@ import android.app.PendingIntent;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.location.Location;
@@ -26,7 +27,6 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
-import com.example.doormat_skeleton.Helpers.GeofenceBroadcastReceiver;
 import com.example.doormat_skeleton.Helpers.GeofenceHelper;
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.Geofence;
@@ -135,7 +135,6 @@ public class LocationApplication extends Application implements Application.Acti
         locationClient = LocationServices.getFusedLocationProviderClient(this);
         geoClient = LocationServices.getGeofencingClient(this);
         geoHelper = new GeofenceHelper(this);
-
         manageLocationUpdates();
     }
 
@@ -230,6 +229,7 @@ public class LocationApplication extends Application implements Application.Acti
     public static AtomicBoolean getAppIsInBackground() {
         return appIsInBackground;
     }
+
 
     private void manageLocationUpdates() {
         Log.i(TAG, "manageLocationUpdates");
@@ -465,7 +465,8 @@ public class LocationApplication extends Application implements Application.Acti
 
         doormats.clear();
         doormats.addAll(user_data.getData());
-//        doormats = user_data.getData();
+
+        updateDoormatsFound();
 
         HashSet<UserData.Doormat> newDoormats = getNewDoormats(prevSearchDoormats);
         HashSet<UserData.Doormat> oldDoormats = getOldDoormats(prevSearchDoormats);
@@ -478,6 +479,39 @@ public class LocationApplication extends Application implements Application.Acti
             updateCircles(map, prevSearchDoormats);
         }
 
+    }
+
+    public void updateDoormatsFound() {
+        //set doormats' found field based on locally-stored set
+        SharedPreferences sharedPref = androidx.preference.PreferenceManager.getDefaultSharedPreferences(this);
+        HashSet<String> foundAnchors = new HashSet<String>(sharedPref.getStringSet("found anchors", new HashSet<String>()));
+        for (UserData.Doormat d : doormats) {
+            if (foundAnchors.contains(d.getDoormat_id())) {
+                d.setFound(true);
+            }
+        }
+
+        //update circles' tags' found fields.
+        //this can be removed if we can confirm circles tags are references to objects and not copies.
+        GoogleMap map = MapActivity.getMap();
+        if (map != null) {
+            for (Circle c : circles) {
+                UserData.Doormat d = (UserData.Doormat) c.getTag();
+                assert d != null;
+                if (foundAnchors.contains(d.getDoormat_id())) {
+                    d.setFound(true);
+                }
+            }
+        }
+    }
+
+    public void updateDoormatFound(String resolvedAnchorID) {
+        //set doormats' found field based on locally-stored set
+        for (UserData.Doormat d : doormats) {
+            if (d.getDoormat_id().equals(resolvedAnchorID)) {
+                d.setFound(true);
+            }
+        }
     }
 
     private HashSet<UserData.Doormat> getNewDoormats(HashSet<UserData.Doormat> prevSearchDoormats) {
@@ -545,7 +579,8 @@ public class LocationApplication extends Application implements Application.Acti
         Log.i(TAG, "updateCircles");
         boolean isInDoormats;
 
-        int color = Color.parseColor("red");
+        int color;
+//        int color = Color.parseColor("red");
         int alphaStroke = 255;
         int alphaFill = 120;
 
@@ -554,6 +589,7 @@ public class LocationApplication extends Application implements Application.Acti
         //remove circles that are not in the most recent 'batch' of doormats and add the new ones,
         //unless newDoormats is empty.
         if (!newDoormats.isEmpty()) {
+
             for (Circle c : circles) {
                 isInDoormats = false;
                 for (UserData.Doormat d: doormats) {
@@ -568,23 +604,39 @@ public class LocationApplication extends Application implements Application.Acti
                 }
             }
             for (UserData.Doormat d : newDoormats) {
+
+                //get the doormat's color; grey if already found
+                if (d.isFound()) {
+                    color = Color.parseColor("lightgrey");
+                }
+                else if (d.getColor().equals("default_color")) {
+                    color = Color.parseColor("red");
+                }
+                else {
+                    color = Color.parseColor(d.getColor());
+                }
+
                 CircleOptions circleOptions = new CircleOptions();
                 circleOptions.center(new LatLng(d.getLatitude(), d.getLongitude()));
                 circleOptions.radius(GEOFENCE_RADIUS);
                 circleOptions.strokeColor(Color.argb(alphaStroke, Color.red(color), Color.green(color), Color.blue(color)));
                 circleOptions.fillColor(Color.argb(alphaFill, Color.red(color), Color.green(color), Color.blue(color)));
                 circleOptions.strokeWidth(3);
-                circles.add(map.addCircle(circleOptions));
+                Circle c = map.addCircle(circleOptions);
+                //set doormat object as circle's tag
+                c.setTag(d);
+                circles.add(c);
             }
         }
         updateCirclesVisibility(map);
     }
     public void updateCirclesVisibility(GoogleMap map) {
         Log.i(TAG, "updateCirclesVisibility");
-        int color = Color.parseColor("red");
-        int alphaStroke = 255;
-        int alphaFill = 120;
-
+        int strokeAlpha = 255;
+        int fillAlpha = 120;
+        int strokeColor;
+        int fillColor;
+        int color;
         //set alpha of circles lower if they're farther away,
         //and make them invisible if they're more than ON_MAP_RADIUS away from user.
         for (Circle c : circles) {
@@ -594,8 +646,23 @@ public class LocationApplication extends Application implements Application.Acti
             }
             else {
                 double ratio = (ON_MAP_RADIUS - dist) / ON_MAP_RADIUS;
-                c.setStrokeColor(Color.argb((int) (alphaStroke * ratio), Color.red(color), Color.green(color), Color.blue(color)));
-                c.setFillColor(Color.argb((int) (alphaFill * ratio), Color.red(color), Color.green(color), Color.blue(color)));
+
+                //get circle's associated doormat
+                UserData.Doormat d = (UserData.Doormat) c.getTag();
+                assert d != null;
+                //get the doormat's color; grey if already found, red if "default_color"
+                if (d.isFound()) {
+                    color = Color.parseColor("lightgrey");
+                }
+                else if (d.getColor().equals("default_color")) {
+                    color = Color.parseColor("red");
+                }
+                else {
+                    color = Color.parseColor(d.getColor());
+                }
+
+                c.setStrokeColor(Color.argb((int) (strokeAlpha * ratio), Color.red(color), Color.green(color), Color.blue(color)));
+                c.setFillColor(Color.argb((int) (fillAlpha * ratio), Color.red(color), Color.green(color), Color.blue(color)));
                 if (!c.isVisible()) {
                     c.setVisible(true);
                 }

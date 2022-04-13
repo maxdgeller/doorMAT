@@ -4,6 +4,7 @@ package com.example.doormat_skeleton;
 import static android.content.ContentValues.TAG;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.preference.PreferenceManager;
 
 import android.app.Activity;
 import android.content.Context;
@@ -53,6 +54,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public class ViewMode extends AppCompatActivity  {
 
@@ -472,6 +474,20 @@ public class ViewMode extends AppCompatActivity  {
                 Log.d(TAG, "addDoormats: " + spinnerList.toString());
             }
         }
+    }
+
+    //add the ID of a just-resolved anchor to the locally-stored set and update current doormats
+    private void addToFoundAnchors(String resolvedAnchorID) {
+
+        SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
+        HashSet<String> foundAnchors = new HashSet<String>(sharedPref.getStringSet("found anchors", new HashSet<String>()));
+        foundAnchors.add(resolvedAnchorID);
+
+        SharedPreferences.Editor editor = sharedPref.edit();
+        editor.putStringSet("found anchors", foundAnchors);
+        editor.apply();
+
+        locationApplication.updateDoormatFound(resolvedAnchorID);
 
     }
 

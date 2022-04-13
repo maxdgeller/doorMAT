@@ -1,6 +1,5 @@
 package com.example.doormat_skeleton.Helpers;
 
-import android.app.Activity;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -8,15 +7,11 @@ import android.location.Location;
 import android.util.Log;
 import android.widget.Toast;
 
-import androidx.appcompat.app.AppCompatActivity;
-
 import com.example.doormat_skeleton.LocationApplication;
-import com.example.doormat_skeleton.MapActivity;
 import com.example.doormat_skeleton.UserData;
 import com.google.android.gms.location.Geofence;
 import com.google.android.gms.location.GeofencingEvent;
 
-import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -51,7 +46,7 @@ public class GeofenceBroadcastReceiver extends BroadcastReceiver {
                 Toast.makeText(context, "GEOFENCE_TRANSITION_ENTER", Toast.LENGTH_SHORT).show();
 
                 LocationApplication.addEnteredGeofences(new HashSet<Geofence>(geofenceList));
-                notificationHelper.sendHighPriorityNotification("Nearby anchors:", getNotifString(userLocation), LocationApplication.class);
+                notificationHelper.sendHighPriorityNotification("Nearby undiscovered anchors:", getNotifString(userLocation), LocationApplication.class);
                 break;
             case Geofence.GEOFENCE_TRANSITION_DWELL:
 //                Toast.makeText(context, "GEOFENCE_TRANSITION_DWELL", Toast.LENGTH_SHORT).show();
@@ -60,7 +55,7 @@ public class GeofenceBroadcastReceiver extends BroadcastReceiver {
                 Toast.makeText(context, "GEOFENCE_TRANSITION_EXIT", Toast.LENGTH_SHORT).show();
 
                 LocationApplication.removeEnteredGeofences(new HashSet<Geofence>(geofenceList));
-                notificationHelper.sendHighPriorityNotification("Nearby anchors:", getNotifString(userLocation), LocationApplication.class);
+                notificationHelper.sendHighPriorityNotification("Nearby undiscovered anchors:", getNotifString(userLocation), LocationApplication.class);
                 break;
         }
     }
@@ -83,11 +78,15 @@ public class GeofenceBroadcastReceiver extends BroadcastReceiver {
             }
         }
 
+        //exclude from the notification any anchors that have already been found by the user
+        enteredDoormats.removeIf(UserData.Doormat::isFound);
+
         if (enteredDoormats.size() > 0) {
             //uses compareTo method of Doormat class to sort by proximity
             Collections.sort(enteredDoormats);
 
             StringBuilder notifString = new StringBuilder("");
+
             List<UserData.Doormat> enteredDoormatsList = enteredDoormats.stream().limit(3).collect(Collectors.toList());
 
             for (UserData.Doormat d : enteredDoormatsList) {
@@ -104,12 +103,12 @@ public class GeofenceBroadcastReceiver extends BroadcastReceiver {
             return notifString.toString();
         }
         else {
-            return "No nearby anchors.";
+            return "No nearby undiscovered anchors.";
         }
     }
 
     public static void sendNotif(Location userLocation, Context context) {
         NotificationHelper notificationHelper = new NotificationHelper(context);
-        notificationHelper.sendHighPriorityNotification("Nearby anchors:", getNotifString(userLocation), LocationApplication.class);
+        notificationHelper.sendHighPriorityNotification("Nearby undiscovered anchors:", getNotifString(userLocation), LocationApplication.class);
     }
 }
