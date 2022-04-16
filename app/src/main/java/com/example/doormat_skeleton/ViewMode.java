@@ -238,6 +238,11 @@ public class ViewMode extends AppCompatActivity  {
                 cloudAnchor.detach();
                 isPlaced = false;
             }
+            if(anchor!=null) {
+                anchor.detach();
+                anchor = null;
+            }
+            finish.setVisibility(View.GONE);
         });
 
         resolveBtn.setOnClickListener(view -> {
@@ -361,15 +366,15 @@ public class ViewMode extends AppCompatActivity  {
             Anchor resolvedAnchor = arFragment.getArSceneView().getSession().resolveCloudAnchor(resolvedAnchorID);
             setCloudAnchor(resolvedAnchor);
 
-            AnchorNode anchorNode = new AnchorNode(resolvedAnchor);
-            anchorNode.setParent(arFragment.getArSceneView().getScene());
-
-            setSphereRenderable();
-
-            TransformableNode sphere = new TransformableNode(arFragment.getTransformationSystem());
-            sphere.setParent(anchorNode);
-            sphere.setRenderable(sphereRenderable);
-            sphere.select();
+//            AnchorNode anchorNode = new AnchorNode(resolvedAnchor);
+//            anchorNode.setParent(arFragment.getArSceneView().getScene());
+//
+//            setSphereRenderable();
+//
+//            TransformableNode sphere = new TransformableNode(arFragment.getTransformationSystem());
+//            sphere.setParent(anchorNode);
+//            sphere.setRenderable(sphereRenderable);
+//            sphere.select();
             Toast.makeText(ViewMode.this, "Resolving doormat...", Toast.LENGTH_SHORT).show();
             appAnchorState = AppAnchorState.RESOLVING;
             resolveFinish.setVisibility(View.GONE);
@@ -421,11 +426,22 @@ public class ViewMode extends AppCompatActivity  {
         }
         else if(appAnchorState == AppAnchorState.RESOLVING){
             if (cloudAnchorState.isError()) {
-
                 Toast.makeText(this, "Error resolving...", Toast.LENGTH_LONG).show();
                 appAnchorState = AppAnchorState.NONE;
             } else if(cloudAnchorState == Anchor.CloudAnchorState.SUCCESS){
                 Toast.makeText(this, "Doormat resolved.", Toast.LENGTH_LONG).show();
+
+                AnchorNode anchorNode = new AnchorNode(cloudAnchor);
+                anchorNode.setParent(arFragment.getArSceneView().getScene());
+
+                setSphereRenderable();
+
+                TransformableNode sphere = new TransformableNode(arFragment.getTransformationSystem());
+                sphere.setParent(anchorNode);
+                sphere.setRenderable(sphereRenderable);
+                isPlaced = true;
+                sphere.select();
+
                 appAnchorState = AppAnchorState.RESOLVED;
                 addToFoundAnchors(resolvedAnchorID);
             }
