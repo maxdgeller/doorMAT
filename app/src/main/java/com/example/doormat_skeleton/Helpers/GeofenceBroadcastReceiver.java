@@ -9,6 +9,7 @@ import android.widget.Toast;
 
 import com.example.doormat_skeleton.LocationApplication;
 import com.example.doormat_skeleton.UserData;
+import com.example.doormat_skeleton.ViewMode;
 import com.google.android.gms.location.Geofence;
 import com.google.android.gms.location.GeofencingEvent;
 
@@ -38,14 +39,19 @@ public class GeofenceBroadcastReceiver extends BroadcastReceiver {
         for (Geofence geofence: geofenceList) {
             Log.d(TAG, "onReceive: " + geofence.getRequestId());
         }
+        Log.d(TAG, "");
         Location userLocation = geofencingEvent.getTriggeringLocation();
         int transitionType = geofencingEvent.getGeofenceTransition();
 
         switch (transitionType) {
             case Geofence.GEOFENCE_TRANSITION_ENTER:
                 Toast.makeText(context, "GEOFENCE_TRANSITION_ENTER", Toast.LENGTH_SHORT).show();
+                for (Geofence geofence: new ArrayList<Geofence>(geofenceList)) {
+                    Log.d(TAG, "onReceive: " + geofence.getRequestId());
+                }
 
-                LocationApplication.addEnteredGeofences(new HashSet<Geofence>(geofenceList));
+                LocationApplication.addEnteredGeofences(new ArrayList<Geofence>(geofenceList));
+                ViewMode.newIDsToResolve(new ArrayList<Geofence>(geofenceList));
                 notificationHelper.sendHighPriorityNotification("Nearby undiscovered anchors:", getNotifString(userLocation), LocationApplication.class);
                 break;
             case Geofence.GEOFENCE_TRANSITION_DWELL:
@@ -54,7 +60,8 @@ public class GeofenceBroadcastReceiver extends BroadcastReceiver {
             case Geofence.GEOFENCE_TRANSITION_EXIT:
                 Toast.makeText(context, "GEOFENCE_TRANSITION_EXIT", Toast.LENGTH_SHORT).show();
 
-                LocationApplication.removeEnteredGeofences(new HashSet<Geofence>(geofenceList));
+                LocationApplication.removeEnteredGeofences(new ArrayList<Geofence>(geofenceList));
+                ViewMode.newIDsToRemove(new ArrayList<Geofence>(geofenceList));
                 notificationHelper.sendHighPriorityNotification("Nearby undiscovered anchors:", getNotifString(userLocation), LocationApplication.class);
                 break;
         }
@@ -63,8 +70,8 @@ public class GeofenceBroadcastReceiver extends BroadcastReceiver {
     private static String getNotifString(Location userLocation) {
         ArrayList<UserData.Doormat> enteredDoormats = new ArrayList<UserData.Doormat>();
 
-        for (Geofence g : LocationApplication.getEnteredGeofences()) {
-            for (UserData.Doormat d : LocationApplication.getCurrentDoormats()) {
+        for (Geofence g : LocationApplication.getEnteredGeofences().values()) {
+            for (UserData.Doormat d : LocationApplication.getCurrentDoormatSet()) {
                 if (g.getRequestId().equals(String.valueOf(d.getDoormat_id()))) {
 
                     double lat1 = userLocation.getLatitude();
