@@ -43,6 +43,7 @@ public class GeofenceBroadcastReceiver extends BroadcastReceiver {
         Location userLocation = geofencingEvent.getTriggeringLocation();
         int transitionType = geofencingEvent.getGeofenceTransition();
 
+        String notifString;
         switch (transitionType) {
             case Geofence.GEOFENCE_TRANSITION_ENTER:
                 Toast.makeText(context, "GEOFENCE_TRANSITION_ENTER", Toast.LENGTH_SHORT).show();
@@ -52,7 +53,11 @@ public class GeofenceBroadcastReceiver extends BroadcastReceiver {
 
                 LocationApplication.addEnteredGeofences(new ArrayList<Geofence>(geofenceList));
                 ViewMode.newIDsToResolve(new ArrayList<Geofence>(geofenceList));
-                notificationHelper.sendHighPriorityNotification("Nearby undiscovered anchors:", getNotifString(userLocation), LocationApplication.class);
+
+                notifString = getNotifString(userLocation);
+                if (!notifString.equals("No nearby undiscovered anchors.")) {
+                    notificationHelper.sendHighPriorityNotification("Nearby undiscovered anchors:", notifString, LocationApplication.class);
+                }
                 break;
             case Geofence.GEOFENCE_TRANSITION_DWELL:
 //                Toast.makeText(context, "GEOFENCE_TRANSITION_DWELL", Toast.LENGTH_SHORT).show();
@@ -62,7 +67,11 @@ public class GeofenceBroadcastReceiver extends BroadcastReceiver {
 
                 LocationApplication.removeEnteredGeofences(new ArrayList<Geofence>(geofenceList));
                 ViewMode.newIDsToRemove(new ArrayList<Geofence>(geofenceList));
-                notificationHelper.sendHighPriorityNotification("Nearby undiscovered anchors:", getNotifString(userLocation), LocationApplication.class);
+
+                notifString = getNotifString(userLocation);
+                if (!notifString.equals("No nearby undiscovered anchors.")) {
+                    notificationHelper.sendHighPriorityNotification("Nearby undiscovered anchors:", notifString, LocationApplication.class);
+                }
                 break;
         }
     }
