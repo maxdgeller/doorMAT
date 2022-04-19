@@ -38,9 +38,9 @@ public class DoormatManager {
         this.callback = callback;
     }
 
-    public void getDoormats(Context context, double lat, double lon) {
+    public void getDoormats(Context context, double lat, double lon, int radius) {
         // url to post our data
-        String url = "http://34.203.214.232/mysite/fetchdoormats.php";
+        String url = "http://34.203.214.232/mysite/fetchdoormats2.php";
 
         // creating a new variable for our request queue
         RequestQueue queue = Volley.newRequestQueue(context.getApplicationContext());
@@ -59,12 +59,7 @@ public class DoormatManager {
 
                 // on below line we are displaying a success toast message.
                 Toast.makeText(context.getApplicationContext(), "Nearby doormats retrieved.", Toast.LENGTH_SHORT).show();
-//                try {
-//                    JSONObject respObj = new JSONObject(response);
-////                    Toast.makeText(context.getApplicationContext(), respObj.toString(), Toast.LENGTH_LONG).show();
-//                } catch (JSONException e) {
-//                    e.printStackTrace();
-//                }
+
             }
         }, new com.android.volley.Response.ErrorListener() {
             @Override
@@ -78,6 +73,7 @@ public class DoormatManager {
                 Map<String, String> params = new HashMap<String, String>();
                 params.put("latitude", String.valueOf(lat));
                 params.put("longitude", String.valueOf(lon));
+                params.put("radius", String.valueOf(radius));
                 return params;
             }
         };

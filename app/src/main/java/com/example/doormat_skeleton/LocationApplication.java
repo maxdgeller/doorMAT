@@ -463,7 +463,7 @@ public class LocationApplication extends Application implements Application.Acti
 
         //execute a function that gets anchors within SEARCH_RADIUS from database
         doormatManager.setVolleyCallback(this);
-        doormatManager.getDoormats(this, lat, lng);
+        doormatManager.getDoormats(this, lat, lng, (int) SEARCH_RADIUS);
 
     }
 
