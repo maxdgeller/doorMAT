@@ -52,6 +52,7 @@ import org.json.JSONObject;
 
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -103,12 +104,13 @@ public class LocationApplication extends Application implements Application.Acti
 
     private GeofencingClient geoClient;
     private GeofenceHelper geoHelper;
-    private static final HashSet<Geofence> enteredGeofences = new HashSet<Geofence>();
+    private static final HashMap<String, Geofence> enteredGeofences = new HashMap<String, Geofence>();
 
     /*************** Database stuff, otherwise known as 'merciless torment' ****************/
 
     DoormatManager doormatManager = new DoormatManager();
-    private static final HashSet<UserData.Doormat> doormats = new HashSet<UserData.Doormat>();
+    private static final HashSet<UserData.Doormat> doormatSet = new HashSet<UserData.Doormat>();
+    private static final HashMap<String, UserData.Doormat> doormatMap = new HashMap<String, UserData.Doormat>();
 
     /************************************ App lifecycle ************************************/
 
@@ -210,20 +212,31 @@ public class LocationApplication extends Application implements Application.Acti
         return currentActivity;
     }
 
-    public static HashSet<UserData.Doormat> getCurrentDoormats() {
-        return doormats;
+    public static HashSet<UserData.Doormat> getCurrentDoormatSet() {
+        return doormatSet;
+    }
+    public static HashMap<String, UserData.Doormat> getCurrentDoormatMap() {
+        return doormatMap;
     }
 
-    public static HashSet<Geofence> getEnteredGeofences() {
+    public static HashMap<String, Geofence> getEnteredGeofences() {
         return enteredGeofences;
     }
 
-    public static void addEnteredGeofences(HashSet<Geofence> geofences) {
-        enteredGeofences.addAll(geofences);
+    public static void addEnteredGeofences(ArrayList<Geofence> geofences) {
+        for (Geofence g : geofences) {
+            if (!enteredGeofences.containsKey(g.getRequestId())) {
+                enteredGeofences.put(g.getRequestId(), g);
+            }
+        }
     }
 
-    public static void removeEnteredGeofences(HashSet<Geofence> geofences) {
-        enteredGeofences.removeAll(geofences);
+    public static void removeEnteredGeofences(ArrayList<Geofence> geofences) {
+        for (Geofence g : geofences) {
+            if (enteredGeofences.containsKey(g.getRequestId())) {
+                enteredGeofences.remove(g.getRequestId());
+            }
+        }
     }
 
     public static AtomicBoolean getAppIsInBackground() {
@@ -329,6 +342,10 @@ public class LocationApplication extends Application implements Application.Acti
         }
         Log.i(TAG, "Previous location not null or outdated.");
         return null;
+    }
+
+    public void setLocationOfSearch(Location location) {
+        locationOfSearch = location;
     }
 
     //updates mLastLocation even if the result is null;
@@ -461,10 +478,15 @@ public class LocationApplication extends Application implements Application.Acti
         UserData user_data = (UserData) new Gson().fromJson(obj.toString(), UserData.class);
 
         //set prevSearchDoormats as copy of doormats before doormats updated with getData()
-        HashSet<UserData.Doormat> prevSearchDoormats = new HashSet<UserData.Doormat>(doormats);
+        HashSet<UserData.Doormat> prevSearchDoormats = new HashSet<UserData.Doormat>(doormatSet);
 
-        doormats.clear();
-        doormats.addAll(user_data.getData());
+        doormatSet.clear();
+        doormatSet.addAll(user_data.getData());
+
+        doormatMap.clear();
+        for (UserData.Doormat d : doormatSet) {
+            doormatMap.put(d.getDoormat_id(), d);
+        }
 
         updateDoormatsFound();
 
@@ -485,7 +507,7 @@ public class LocationApplication extends Application implements Application.Acti
         //set doormats' found field based on locally-stored set
         SharedPreferences sharedPref = androidx.preference.PreferenceManager.getDefaultSharedPreferences(this);
         HashSet<String> foundAnchors = new HashSet<String>(sharedPref.getStringSet("found anchors", new HashSet<String>()));
-        for (UserData.Doormat d : doormats) {
+        for (UserData.Doormat d : doormatSet) {
             if (foundAnchors.contains(d.getDoormat_id())) {
                 d.setFound(true);
             }
@@ -507,7 +529,7 @@ public class LocationApplication extends Application implements Application.Acti
 
     public void updateDoormatFound(String resolvedAnchorID) {
         //set doormats' found field based on locally-stored set
-        for (UserData.Doormat d : doormats) {
+        for (UserData.Doormat d : doormatSet) {
             if (d.getDoormat_id().equals(resolvedAnchorID)) {
                 d.setFound(true);
             }
@@ -515,13 +537,13 @@ public class LocationApplication extends Application implements Application.Acti
     }
 
     private HashSet<UserData.Doormat> getNewDoormats(HashSet<UserData.Doormat> prevSearchDoormats) {
-        HashSet<UserData.Doormat> newDoormats = new HashSet<UserData.Doormat>(doormats);
+        HashSet<UserData.Doormat> newDoormats = new HashSet<UserData.Doormat>(doormatSet);
         newDoormats.removeAll(prevSearchDoormats);
         return newDoormats;
     }
     private HashSet<UserData.Doormat> getOldDoormats(HashSet<UserData.Doormat> prevSearchDoormats) {
         HashSet<UserData.Doormat> oldDoormats = new HashSet<UserData.Doormat>(prevSearchDoormats);
-        oldDoormats.removeAll(doormats);
+        oldDoormats.removeAll(doormatSet);
         return oldDoormats;
     }
 
@@ -540,24 +562,24 @@ public class LocationApplication extends Application implements Application.Acti
                 geofenceList.add(geoHelper.getGeofence(String.valueOf(d.getDoormat_id()), new LatLng(d.getLatitude(), d.getLongitude()), GEOFENCE_RADIUS,
                         Geofence.GEOFENCE_TRANSITION_ENTER | Geofence.GEOFENCE_TRANSITION_DWELL | Geofence.GEOFENCE_TRANSITION_EXIT));
             }
-        }
-        GeofencingRequest geofencingRequest = geoHelper.getGeofencingRequest(geofenceList);
-        PendingIntent pendingIntent = geoHelper.getPendingIntent();
+            GeofencingRequest geofencingRequest = geoHelper.getGeofencingRequest(geofenceList);
+            PendingIntent pendingIntent = geoHelper.getPendingIntent();
 
-        geoClient.addGeofences(geofencingRequest, pendingIntent)
-                .addOnSuccessListener(new OnSuccessListener<Void>() {
-                    @Override
-                    public void onSuccess(Void unused) {
-                        Log.d(TAG, "onSuccess: Geofence(s) added");
-                    }
-                })
-                .addOnFailureListener(new OnFailureListener() {
-                    @Override
-                    public void onFailure(@NonNull Exception e) {
-                        String errorMessage = geoHelper.getErrorString(e);
-                        Log.d(TAG, "onFailure: " + errorMessage);
-                    }
-                });
+            geoClient.addGeofences(geofencingRequest, pendingIntent)
+                    .addOnSuccessListener(new OnSuccessListener<Void>() {
+                        @Override
+                        public void onSuccess(Void unused) {
+                            Log.d(TAG, "onSuccess: Geofence(s) added");
+                        }
+                    })
+                    .addOnFailureListener(new OnFailureListener() {
+                        @Override
+                        public void onFailure(@NonNull Exception e) {
+                            String errorMessage = geoHelper.getErrorString(e);
+                            Log.d(TAG, "onFailure: " + errorMessage);
+                        }
+                    });
+        }
     }
 
     private void removeOldGeofences(HashSet<UserData.Doormat> oldDoormats) {
@@ -592,7 +614,7 @@ public class LocationApplication extends Application implements Application.Acti
 
             for (Circle c : circles) {
                 isInDoormats = false;
-                for (UserData.Doormat d: doormats) {
+                for (UserData.Doormat d: doormatSet) {
                     if ((d.getLatitude() == c.getCenter().latitude) && (d.getLongitude() == c.getCenter().longitude)) {
                         isInDoormats = true;
                         break;

@@ -7,7 +7,6 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.preference.PreferenceManager;
 
 import android.app.Activity;
-import android.content.Context;
 
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -29,286 +28,139 @@ import android.widget.Toast;
 
 import com.example.doormat_skeleton.Helpers.SnackbarHelper;
 import com.google.android.gms.location.Geofence;
-import com.google.android.gms.maps.model.LatLng;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.ar.core.Anchor;
 
 import com.google.ar.core.HitResult;
 import com.google.ar.core.Plane;
 
-import com.google.ar.core.Pose;
 import com.google.ar.core.Session;
-import com.google.ar.sceneform.rendering.ViewRenderable;
+import com.google.ar.sceneform.rendering.Material;
 import com.google.ar.sceneform.ux.ArFragment;
 import com.google.ar.sceneform.AnchorNode;
 import com.google.ar.sceneform.FrameTime;
 import com.google.ar.sceneform.math.Vector3;
 import com.google.ar.sceneform.rendering.Color;
 import com.google.ar.sceneform.rendering.MaterialFactory;
-import com.google.ar.sceneform.rendering.Renderable;
 import com.google.ar.sceneform.rendering.ShapeFactory;
 import com.google.ar.sceneform.rendering.ModelRenderable;
 import com.google.ar.sceneform.ux.TransformableNode;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
-import java.util.Set;
+import java.util.Map;
+import java.util.Queue;
+import java.util.concurrent.CompletableFuture;
 
 public class ViewMode extends AppCompatActivity  {
 
     private ArFragment arFragment;
 
-    private ModelRenderable sphereRenderable;
-    private ModelRenderable blueSphere;
-    private ModelRenderable greenSphere;
-    private ModelRenderable redSphere;
-    private ModelRenderable blueCube;
-    private ModelRenderable redCube;
-    private ModelRenderable greenCube;
-    private ModelRenderable blueCylinder;
-    private ModelRenderable redCylinder;
-    private ModelRenderable greenCylinder;
+    /***** Data from outside ViewMode *****/
+    LocationApplication locationApplication;
+    HashMap<String, UserData.Doormat> doormatMap = LocationApplication.getCurrentDoormatMap();
+    HashSet<UserData.Doormat> currentMats;
+    ArrayList<Geofence> geofences;
 
-    private Anchor cloudAnchor;
-    SessionManager sessionManager;
-    String mName;
-    private boolean isPlaced;
-    SharedPreferences markerPreferences;
-    LatLng latLng;
-    double lat;
-    double lon;
-    double latitude;
-    double longitude;
+    /****** Rendering anchors ******/
+    //acceptable colors
+    private static final String[] COLORS = new String[]{
+            "red", "green", "blue",
+            "cyan", "magenta", "yellow", "black",  "grey", "white",
+            "aqua", "fuchsia", "lime", "maroon", "navy", "olive", "purple", "silver", "teal"
+    };
+    //example of a key: {"red", "cylinder"}
+    private final Map<String[], ModelRenderable> madeModels = new HashMap<String[], ModelRenderable>();
+    //example of a key: "blue"
+    private final Map<String, CompletableFuture<Material>> colorMaterials = new HashMap<String, CompletableFuture<Material>>();
+
+    /****** Resolving anchors ******/
+    //add to Queue from Geofence enter event
+    private static final Queue<String> idsToResolve = new LinkedList<String>();
+    //anchors being resolved
+    private final Queue<Anchor> resolvingAnchors = new LinkedList<Anchor>();
+    //anchors that have finished resolving
+    private final Queue<Anchor> resolvedAnchors = new LinkedList<Anchor>();
+    //add to Queue from Geofence exit event
+    private static final Queue<String> idsToRemove = new LinkedList<String>();
+
+    /****** Hosting anchors ******/
+    private final StoreManager storeManager = new StoreManager();
+    private Anchor anchorToHost;
+    private boolean isPlaced = false;
     String colorChoice = "blue";
     String shapeChoice = "sphere";
-    String resolvedAnchorID;
+    Spinner colorSpinner;
+    Button hostBtn;
+    HitResult lastHitResult;
 
-    Anchor anchor;
-
-    HashSet<UserData.Doormat> mDoormats;
-    HashSet<UserData.Doormat> currentMats;
-    HashSet<Geofence> geofences;
-
-    boolean isEntered;
-
-    Spinner doormatSpinner;
-
-    List<String> spinnerList;
-    List<String> anchorList;
-
-    LocationApplication locationApplication;
-
-
-
-    private enum AppAnchorState {
-        NONE,
-        HOSTING,
-        HOSTED,
-        RESOLVING,
-        RESOLVED
-    }
-
-    private enum ResolveState{
-        INSUFFICIENT,
-        SUFFICIENT,
-        GOOD
-    }
-
-
-    private AppAnchorState appAnchorState = AppAnchorState.NONE;
-    private ResolveState resolveState = ResolveState.INSUFFICIENT;
-    private final SnackbarHelper snackbarHelper = new SnackbarHelper();
-    private final StoreManager storeManager = new StoreManager();
+    /****** Session data ******/
+    SessionManager sessionManager;
+    String mName;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_view_mode);
-        markerPreferences = getSharedPreferences("MarkerValue", Context.MODE_PRIVATE);
+
+        /***** Data from outside ViewMode *****/
+        locationApplication = (LocationApplication) getApplication();
 
         sessionManager = new SessionManager(this);
         sessionManager.checkLogin();
         HashMap<String, String> user = sessionManager.getUserDetail();
         mName = user.get(SessionManager.USERNAME);
 
-        Button resolveBtn = findViewById(R.id.resolveBtn);
-        resolveBtn.setVisibility(View.GONE);
-
         Button clear = findViewById(R.id.clear);
-        Button finish = findViewById(R.id.finish);
-        Button resolveFinish = findViewById(R.id.resolveFinish);
-        resolveFinish.setVisibility(View.GONE);
+        hostBtn = findViewById(R.id.hostBtn);
 
         ImageButton sphereBtn = findViewById(R.id.sphereBtn);
         ImageButton cubeBtn = findViewById(R.id.cubeBtn);
         ImageButton cylinderBtn = findViewById(R.id.cylinderBtn);
-        ImageButton redBtn = findViewById(R.id.redBtn);
-        ImageButton blueBtn = findViewById(R.id.blueBtn);
-        ImageButton greenBtn = findViewById(R.id.greenBtn);
 
-        doormatSpinner = findViewById(R.id.doormat_spinner);
-        doormatSpinner.setVisibility(View.GONE);
+        colorSpinner = findViewById(R.id.color_spinner);
+        colorSpinner.setVisibility(View.VISIBLE);
+        ArrayAdapter<String> dataAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_spinner_dropdown_item, COLORS);
 
-        finish.setVisibility(View.GONE);
+        colorSpinner.setAdapter(dataAdapter);
+        colorSpinner.setVisibility(View.VISIBLE);
+        colorSpinner.setPrompt("Color");
+        colorSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+             @Override
+             public void onItemSelected(AdapterView<?> adapterView, View view, int i, long l) {
+                 Log.d(TAG, "onItemSelected: color: " + colorChoice);
+
+                 String color = colorSpinner.getSelectedItem().toString();
+                 colorChoice = color;
+                 placeItem(lastHitResult);
+//                 colorSpinner.setBackgroundColor(android.graphics.Color.parseColor(color));
+             }
+
+             @Override
+             public void onNothingSelected(AdapterView<?> adapterView) {
+
+             }
+         });
+
+        hostBtn.setVisibility(View.GONE);
         FloatingActionButton back_btn = findViewById(R.id.back_btn);
-//        latLng = getIntent().getExtras().getParcelable("LatLng");
-//        lat = latLng.latitude;
-//        lon = latLng.longitude;
 
-
-        locationApplication = (LocationApplication) getApplication();
-        Location location = locationApplication.getLastLocation();
-
-        latitude = location.getLatitude();
-        longitude = location.getLongitude();
-
-
-        mDoormats = LocationApplication.getCurrentDoormats();
-        geofences = LocationApplication.getEnteredGeofences();
-        currentMats = new HashSet<UserData.Doormat>();
-
-
-        checkEntered();
-        if(isEntered){
-            resolveBtn.setVisibility(View.VISIBLE);
-            addDoormats();
+        for (String cStr : COLORS) {
+            Color color = new Color(android.graphics.Color.parseColor(cStr));
+            colorMaterials.put(cStr, MaterialFactory.makeOpaqueWithColor(getApplicationContext(), color));
         }
 
-        MaterialFactory.makeOpaqueWithColor(this, new Color(android.graphics.Color.BLUE))
-                .thenAccept(material -> sphereRenderable = ShapeFactory.makeSphere(
-                        0.1f, new Vector3(0.0f,0.15f, 0.0f ),material));
+        geofences = new ArrayList<Geofence>(LocationApplication.getEnteredGeofences().values());
+        if (idsToResolve.isEmpty()) { newIDsToResolve(geofences); }
 
-
-        //Creating sphere models
-        MaterialFactory.makeOpaqueWithColor(getApplicationContext(), new Color(android.graphics.Color.BLUE))
-                .thenAccept(material -> blueSphere = ShapeFactory.makeSphere(
-                        0.1f, new Vector3(0.0f, 0.15f, 0.0f), material));
-        shapeChoice = "sphere";
-
-        MaterialFactory.makeOpaqueWithColor(getApplicationContext(), new Color(android.graphics.Color.RED))
-                .thenAccept(material -> redSphere = ShapeFactory.makeSphere(
-                        0.1f, new Vector3(0.0f, 0.15f, 0.0f), material));
-        shapeChoice = "sphere";
-
-        MaterialFactory.makeOpaqueWithColor(getApplicationContext(), new Color(android.graphics.Color.GREEN))
-                .thenAccept(material -> greenSphere = ShapeFactory.makeSphere(
-                        0.1f, new Vector3(0.0f, 0.15f, 0.0f), material));
-        shapeChoice = "sphere";
-
-        //Creating cube models
-        MaterialFactory.makeOpaqueWithColor(getApplicationContext(), new Color(android.graphics.Color.BLUE))
-                .thenAccept(material -> blueCube = ShapeFactory.makeCube(
-                        new Vector3(0.25f, 0.25f, 0.25f), new Vector3(0.0f, 0.15f, 0.0f), material));
-        shapeChoice = "cube";
-
-        MaterialFactory.makeOpaqueWithColor(getApplicationContext(), new Color(android.graphics.Color.RED))
-                .thenAccept(material -> redCube = ShapeFactory.makeCube(
-                        new Vector3(0.25f, 0.25f, 0.25f),
-                        new Vector3(0.0f, 0.15f, 0.0f), material));
-        shapeChoice = "cube";
-
-        MaterialFactory.makeOpaqueWithColor(getApplicationContext(), new Color(android.graphics.Color.GREEN))
-                .thenAccept(material -> greenCube = ShapeFactory.makeCube(
-                        new Vector3(0.25f, 0.25f, 0.25f),
-                        new Vector3(0.0f, 0.15f, 0.0f), material));
-        shapeChoice = "cube";
-
-        //Creating cylinder models
-        MaterialFactory.makeOpaqueWithColor(getApplicationContext(), new Color(android.graphics.Color.BLUE))
-                .thenAccept(material -> blueCylinder = ShapeFactory.makeCylinder(
-                        0.1f, 0.3f, new Vector3(0.0f, 0.15f, 0.0f), material));
-        shapeChoice = "cylinder";
-
-        MaterialFactory.makeOpaqueWithColor(getApplicationContext(), new Color(android.graphics.Color.RED))
-                .thenAccept(material -> redCylinder = ShapeFactory.makeCylinder(
-                        0.1f, 0.3f, new Vector3(0.0f, 0.15f, 0.0f), material));
-        shapeChoice = "cylinder";
-
-        MaterialFactory.makeOpaqueWithColor(getApplicationContext(), new Color(android.graphics.Color.GREEN))
-                .thenAccept(material -> greenCylinder = ShapeFactory.makeCylinder(
-                        0.1f, 0.3f, new Vector3(0.0f, 0.15f, 0.0f), material));
-        shapeChoice = "cylinder";
-
+        currentMats = new HashSet<UserData.Doormat>();
 
         clear.setOnClickListener(view -> {
-            setCloudAnchor(null);
-            if(cloudAnchor!=null) {
-                cloudAnchor.detach();
-                isPlaced = false;
-            }
-            if(anchor!=null) {
-                anchor.detach();
-                anchor = null;
-            }
-            finish.setVisibility(View.GONE);
-        });
-
-        resolveBtn.setOnClickListener(view -> {
-            if(cloudAnchor != null){
-                return;
-            }
-
-            if(spinnerList.size() == 1){
-                resolvedAnchorID = anchorList.get(0);
-                String item = spinnerList.get(0);
-                String[] parts = item.split(",");
-                colorChoice = parts[0].trim();
-                shapeChoice = parts[1].trim();
-
-                Anchor resolvedAnchor = arFragment.getArSceneView().getSession().resolveCloudAnchor(resolvedAnchorID);
-                setCloudAnchor(resolvedAnchor);
-
-                AnchorNode anchorNode = new AnchorNode(resolvedAnchor);
-                anchorNode.setParent(arFragment.getArSceneView().getScene());
-
-                setSphereRenderable();
-
-                TransformableNode sphere = new TransformableNode(arFragment.getTransformationSystem());
-                sphere.setParent(anchorNode);
-                sphere.setRenderable(sphereRenderable);
-                sphere.select();
-                Toast.makeText(ViewMode.this, "Resolving doormat...", Toast.LENGTH_SHORT).show();
-                appAnchorState = AppAnchorState.RESOLVING;
-
-                return;
-            }
-
-
-            resolveStart();
-
-//            ArrayAdapter<String> dataAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_spinner_dropdown_item, spinnerList);
-//
-//            doormatSpinner.setAdapter(dataAdapter);
-//            doormatSpinner.setVisibility(View.VISIBLE);
-//            doormatSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-//                @Override
-//                public void onItemSelected(AdapterView<?> adapterView, View view, int i, long l) {
-//                    String item = doormatSpinner.getSelectedItem().toString();
-//                    String[] parts = item.split(",");
-//                    Log.d(TAG, "onItemSelected: " + parts[0]);
-//                    resolvedAnchorID = parts[0];
-//                    colorChoice = parts[1].trim();
-//                    shapeChoice = parts[2].trim();
-//
-//                    Log.d(TAG, "onItemSelected: color: " + colorChoice + " shape: " + shapeChoice );
-//                    resolveFinish.setVisibility(View.VISIBLE);
-//
-//                }
-//
-//                @Override
-//                public void onNothingSelected(AdapterView<?> adapterView) {
-//
-//                }
-//            });
-
-
-
-//            ResolveDialogFragment dialog = new ResolveDialogFragment();
-//            dialog.setOkListener(ViewMode.this::onResolveOkPressed);
-//            dialog.show(getSupportFragmentManager(), "Resolve");
+            clearPlacedAnchor();
+            hostBtn.setVisibility(View.GONE);
         });
 
 
@@ -326,97 +178,76 @@ public class ViewMode extends AppCompatActivity  {
             }
         });
 
-
         sphereBtn.setOnClickListener(view -> {
             shapeChoice = "sphere";
-            setSphereRenderable();
+            placeItem(lastHitResult);
         });
 
         cubeBtn.setOnClickListener(view -> {
             shapeChoice = "cube";
-            setSphereRenderable();
+            placeItem(lastHitResult);
         });
 
         cylinderBtn.setOnClickListener(view -> {
             shapeChoice = "cylinder";
-            setSphereRenderable();
+            placeItem(lastHitResult);
         });
-
-        redBtn.setOnClickListener(view ->{
-            colorChoice = "red";
-            setSphereRenderable();
-        });
-
-        blueBtn.setOnClickListener(view -> {
-            colorChoice = "blue";
-            setSphereRenderable();
-        });
-
-        greenBtn.setOnClickListener(view -> {
-            colorChoice = "green";
-            setSphereRenderable();
-        });
-
 
         arFragment = (CustomArFragment) getSupportFragmentManager().findFragmentById(R.id.ux_fragment);
         assert arFragment != null;
         arFragment.getArSceneView().getScene().addOnUpdateListener(this::onUpdateFrame);
-
-
-        assert arFragment != null;
         arFragment.setOnTapArPlaneListener(
                 (HitResult hitResult, Plane plane, MotionEvent motionEvent) -> {
-                    if (plane.getType() != Plane.Type.HORIZONTAL_UPWARD_FACING ||
-                            appAnchorState != AppAnchorState.NONE) {
-                        return;
+                    if (plane.getType() == Plane.Type.HORIZONTAL_UPWARD_FACING) {
+                        if (anchorToHost == null || anchorToHost.getCloudAnchorState() != Anchor.CloudAnchorState.TASK_IN_PROGRESS) {
+                            placeItem(hitResult);
+                            lastHitResult = hitResult;
+                            hostBtn.setVisibility(View.VISIBLE);
+                        }
                     }
-
-
-                    placeItem(hitResult);
-
-                    if(isPlaced){
-                        finish.setVisibility(View.VISIBLE);
-                    }
-
                 }
         );
 
-        resolveFinish.setOnClickListener(view -> {
-
-            if(cloudAnchor != null){
-                Toast.makeText(this, "Please clear doormat first.", Toast.LENGTH_SHORT).show();
-                resolveFinish.setVisibility(View.GONE);
-                return;
-            }
-
-            Anchor resolvedAnchor = arFragment.getArSceneView().getSession().resolveCloudAnchor(resolvedAnchorID);
-            setCloudAnchor(resolvedAnchor);
-
-//            AnchorNode anchorNode = new AnchorNode(resolvedAnchor);
-//            anchorNode.setParent(arFragment.getArSceneView().getScene());
-//
-//            setSphereRenderable();
-//
-//            TransformableNode sphere = new TransformableNode(arFragment.getTransformationSystem());
-//            sphere.setParent(anchorNode);
-//            sphere.setRenderable(sphereRenderable);
-//            sphere.select();
-            Toast.makeText(ViewMode.this, "Resolving doormat...", Toast.LENGTH_SHORT).show();
-            appAnchorState = AppAnchorState.RESOLVING;
-            resolveFinish.setVisibility(View.GONE);
-
-        });
-
-        finish.setOnClickListener(view -> {
+        hostBtn.setOnClickListener(view -> {
             Session session = arFragment.getArSceneView().getSession();
-            cloudAnchor = session.hostCloudAnchor(anchor);
-            setCloudAnchor(cloudAnchor);
-            appAnchorState = AppAnchorState.HOSTING;
+            assert session != null;
+            anchorToHost = session.hostCloudAnchor(anchorToHost);
             Toast.makeText(getApplicationContext(),"Now Hosting...", Toast.LENGTH_LONG).show();
         });
     }
 
+    private void clearPlacedAnchor() {
+        if (anchorToHost != null) {
+            anchorToHost.detach();
+            anchorToHost = null;
+            isPlaced = false;
+        }
+    }
 
+    //call this whenever you need a ModelRenderable
+    private ModelRenderable getRenderable(String color, String shape) {
+        String[] key = new String[]{color, shape};
+        if (madeModels.containsKey(key)) { Log.d(TAG, "Retrieving model: " + key[0] + " " + key[1]); return madeModels.get(key); }
+
+        ModelRenderable model;
+        Material material = colorMaterials.get(color).getNow(null);
+
+        if (shape.equals("sphere")) {model = ShapeFactory.makeSphere(0.1f, new Vector3(0.0f, 0.15f, 0.0f), material);}
+        else if (shape.equals("cube")) {model = ShapeFactory.makeCube(new Vector3(0.25f, 0.25f, 0.25f), new Vector3(0.0f, 0.15f, 0.0f), material);}
+        else {model = ShapeFactory.makeCylinder(0.1f, 0.3f, new Vector3(0.0f, 0.15f, 0.0f), material);}
+
+        madeModels.put(key, model);
+        return madeModels.get(key);
+    }
+
+    private TransformableNode renderAnchor(Anchor a, String color, String shape) {
+        AnchorNode anchorNode = new AnchorNode(a);
+        anchorNode.setParent(arFragment.getArSceneView().getScene());
+        TransformableNode tNode = new TransformableNode(arFragment.getTransformationSystem());
+        tNode.setParent(anchorNode);
+        tNode.setRenderable(getRenderable(color, shape));
+        return tNode;
+    }
 
 
     private void onUpdateFrame(FrameTime frameTime) {
@@ -425,20 +256,51 @@ public class ViewMode extends AppCompatActivity  {
 
 
     private synchronized void checkUpdatedAnchor(){
-        if(appAnchorState != AppAnchorState.HOSTING && appAnchorState != AppAnchorState.RESOLVING){
-            return;
-        }
-        Anchor.CloudAnchorState cloudAnchorState = cloudAnchor.getCloudAnchorState();
-        if(appAnchorState == AppAnchorState.HOSTING) {
-            if (cloudAnchorState.isError()) {
+//        Log.i(TAG, "checkUpdatedAnchor");
 
+        if (!idsToResolve.isEmpty()) {
+            //Each frame, remove a single ID from idsToResolve and add a new anchornode to resolvingAnchors
+            Anchor a = arFragment.getArSceneView().getSession().resolveCloudAnchor(idsToResolve.poll());
+            resolvingAnchors.add(a);
+        }
+        if (!resolvingAnchors.isEmpty()) {
+            Anchor a = resolvingAnchors.poll();
+            Anchor.CloudAnchorState state = a.getCloudAnchorState();
+            Log.d(TAG, "State: " + state.name() + ", ID: " + a.getCloudAnchorId());
+            if (state == Anchor.CloudAnchorState.TASK_IN_PROGRESS) {
+                //move to the end of the queue if resolution in progress
+                resolvingAnchors.add(a);
+            }
+            else if (state == Anchor.CloudAnchorState.SUCCESS) {
+                UserData.Doormat d = doormatMap.get(a.getCloudAnchorId());
+
+                addToFoundAnchors(a.getCloudAnchorId());
+
+                assert d != null;
+                renderAnchor(a, d.getColor(), d.getShape());
+
+                resolvedAnchors.add(a);
+            }
+            else if (state.isError()) {
+                a.detach();
+                Toast.makeText(getApplicationContext(),"ERROR: " + state.name() + ", ID: " + a.getCloudAnchorId(), Toast.LENGTH_LONG).show();
+            }
+        }
+
+        if (anchorToHost != null) {
+            Anchor.CloudAnchorState hostState = anchorToHost.getCloudAnchorState();
+            if (hostState.isError()) {
                 Toast.makeText(this, "Error Hosting...", Toast.LENGTH_LONG).show();
-                appAnchorState = AppAnchorState.NONE;
-            } else if (cloudAnchorState == Anchor.CloudAnchorState.SUCCESS) {
-//                int shortCode = storeManager.nextShortCode(this);
-                Log.d(TAG, "checkUpdatedAnchor: " + cloudAnchor.getCloudAnchorId());
+            }
+            else if (hostState == Anchor.CloudAnchorState.SUCCESS) {
+                Log.d(TAG, "checkUpdatedAnchor: " + anchorToHost.getCloudAnchorId());
+
+                Location location = locationApplication.getLastLocation();
+                double latitude = location.getLatitude();
+                double longitude = location.getLongitude();
+
                 storeManager.storeDoormat(this,
-                        cloudAnchor.getCloudAnchorId(),
+                        anchorToHost.getCloudAnchorId(),
                         isPlaced,
                         latitude,
                         longitude,
@@ -446,135 +308,24 @@ public class ViewMode extends AppCompatActivity  {
                         colorChoice,
                         shapeChoice);
 
-                Toast.makeText(this, "Anchor hosted. Cloud ID: " + cloudAnchor.getCloudAnchorId(), Toast.LENGTH_LONG).show();
-                appAnchorState = AppAnchorState.HOSTED;
-                addToFoundAnchors(cloudAnchor.getCloudAnchorId());
-            }
-        }
-        else if(appAnchorState == AppAnchorState.RESOLVING){
-            if (cloudAnchorState.isError()) {
-                Toast.makeText(this, "Error resolving...", Toast.LENGTH_LONG).show();
-                appAnchorState = AppAnchorState.NONE;
-            } else if(cloudAnchorState == Anchor.CloudAnchorState.SUCCESS){
-                Toast.makeText(this, "Doormat resolved.", Toast.LENGTH_LONG).show();
+                Toast.makeText(this, "Anchor hosted. Cloud ID: " + anchorToHost.getCloudAnchorId(), Toast.LENGTH_LONG).show();
 
-                AnchorNode anchorNode = new AnchorNode(cloudAnchor);
-                anchorNode.setParent(arFragment.getArSceneView().getScene());
+                addToFoundAnchors(anchorToHost.getCloudAnchorId());
+                clearPlacedAnchor();
 
-                setSphereRenderable();
-
-                TransformableNode sphere = new TransformableNode(arFragment.getTransformationSystem());
-                sphere.setParent(anchorNode);
-                sphere.setRenderable(sphereRenderable);
-                isPlaced = true;
-                sphere.select();
-
-                appAnchorState = AppAnchorState.RESOLVED;
-                addToFoundAnchors(resolvedAnchorID);
-            }
-        }
-    }
-
-    private void resolveStart(){
-        ArrayAdapter<String> dataAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_spinner_dropdown_item, spinnerList);
-
-        doormatSpinner.setAdapter(dataAdapter);
-        doormatSpinner.setVisibility(View.VISIBLE);
-        doormatSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-            @Override
-            public void onItemSelected(AdapterView<?> adapterView, View view, int i, long l) {
-                String item = doormatSpinner.getSelectedItem().toString();
-                int pos = doormatSpinner.getSelectedItemPosition();
-                String[] parts = item.split(",");
-//                Log.d(TAG, "onItemSelected: " + parts[0]);
-                resolvedAnchorID = anchorList.get(pos);
-                Log.d(TAG, "onItemSelected: " + resolvedAnchorID);
-                colorChoice = parts[0].trim();
-                shapeChoice = parts[1].trim();
-
-                Log.d(TAG, "onItemSelected: color: " + colorChoice + " shape: " + shapeChoice );
-                Button resolveFinish = findViewById(R.id.resolveFinish);
-                resolveFinish.setVisibility(View.VISIBLE);
+                //update global doormats, including newly hosted anchor
+                locationApplication.setLocationOfSearch(null);
 
             }
-
-            @Override
-            public void onNothingSelected(AdapterView<?> adapterView) {
-
-            }
-        });
-    }
-
-
-    private void setCloudAnchor(Anchor newAnchor){
-        if(cloudAnchor != null){
-            cloudAnchor.detach();
-        }
-        cloudAnchor = newAnchor;
-        appAnchorState = AppAnchorState.NONE;
-        snackbarHelper.hide(this);
-    }
-
-
-    private void setSphereRenderable(){
-        if(colorChoice.equals("blue") && shapeChoice.equals("sphere")){
-            sphereRenderable = blueSphere;
-        }else if(colorChoice.equals("red") && shapeChoice.equals("sphere")){
-            sphereRenderable = redSphere;
-        }else if(colorChoice.equals("green") && shapeChoice.equals("sphere")){
-            sphereRenderable = greenSphere;
-        }else if(colorChoice.equals("blue") && shapeChoice.equals("cube")){
-            sphereRenderable = blueCube;
-        }else if(colorChoice.equals("red") && shapeChoice.equals("cube")){
-            sphereRenderable = redCube;
-        }else if(colorChoice.equals("green") && shapeChoice.equals("cube")){
-            sphereRenderable = greenCube;
-        }else if(colorChoice.equals("blue") && shapeChoice.equals("cylinder")){
-            sphereRenderable = blueCylinder;
-        }else if(colorChoice.equals("red") && shapeChoice.equals("cylinder")){
-            sphereRenderable = redCylinder;
-        }else if(colorChoice.equals("green") && shapeChoice.equals("cylinder")){
-            sphereRenderable = greenCylinder;
         }
     }
 
     private void placeItem(HitResult hitResult){
-        anchor = hitResult.createAnchor();
-        setCloudAnchor(anchor);
-        AnchorNode anchorNode = new AnchorNode(anchor);
-        anchorNode.setParent(arFragment.getArSceneView().getScene());
-        TransformableNode sphere = new TransformableNode(arFragment.getTransformationSystem());
-        sphere.setParent(anchorNode);
-        sphere.setRenderable(sphereRenderable);
-        isPlaced = true;
-        sphere.select();
-    }
-
-    private void checkEntered(){
-        if(geofences != null){
-            isEntered = true;
-        }else{
-            isEntered = false;
-        }
-    }
-
-    //adds doormat objects in geofence to spinner list
-    private void addDoormats(){
-        if(mDoormats != null){
-            for(Geofence g: geofences){
-                for(UserData.Doormat d: mDoormats){
-                    if(String.valueOf(d.getDoormat_id()).equals(g.getRequestId())){
-                        currentMats.add(d);
-                    }
-                }
-            }
-            spinnerList = new ArrayList<String>();
-            anchorList = new ArrayList<String>();
-            for(UserData.Doormat d: currentMats){
-                spinnerList.add(d.getColor() + ", " + d.getShape());
-                anchorList.add(d.getDoormat_id());
-                Log.d(TAG, "addDoormats: " + spinnerList.toString());
-            }
+        if (colorChoice != null && shapeChoice != null && hitResult != null) {
+            clearPlacedAnchor();
+            anchorToHost = hitResult.createAnchor();
+            renderAnchor(anchorToHost, colorChoice, shapeChoice).select();
+            isPlaced = true;
         }
     }
 
@@ -591,6 +342,19 @@ public class ViewMode extends AppCompatActivity  {
 
         locationApplication.updateDoormatFound(resolvedAnchorID);
 
+    }
+
+    //methods called by GeofenceBroadcastReceiver upon events being triggered
+    public static void newIDsToResolve(ArrayList<Geofence> triggeredGeofences) {
+        for (Geofence g : triggeredGeofences) {
+            Log.d(TAG, "Adding triggered Geofence to idsToResolve, ID: " + g.getRequestId());
+            idsToResolve.add(g.getRequestId());
+        }
+    }
+    public static void newIDsToRemove(ArrayList<Geofence> triggeredGeofences) {
+        for (Geofence g : triggeredGeofences) {
+            idsToRemove.add(g.getRequestId());
+        }
     }
 
 }
