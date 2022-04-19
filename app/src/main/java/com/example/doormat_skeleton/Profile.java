@@ -69,7 +69,7 @@ public class Profile extends DrawerBaseActivity {
         TextView setName = findViewById(R.id.usertag);
         setName.setText(mName);
 
-        mDoormats = LocationApplication.getCurrentDoormats();
+//        mDoormats = LocationApplication.getCurrentDoormats();
 
         storeManager = new StoreManager();
 
@@ -152,8 +152,6 @@ public class Profile extends DrawerBaseActivity {
                     }
                 });
                 passwordBuilder.show();
-
-
 
             }
         });
