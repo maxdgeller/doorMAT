@@ -73,7 +73,7 @@ public class LocationApplication extends Application implements Application.Acti
     private final static int LOW_PRIORITY = LocationRequest.PRIORITY_LOW_POWER;
     private final static int GRANTED = PackageManager.PERMISSION_GRANTED;
 
-    private final float SEARCH_RADIUS = 1000; //radius around user from which to get nearby cloud anchors' coordinates from database
+    public final static float SEARCH_RADIUS = 1000; //radius around user from which to get nearby cloud anchors' coordinates from database
     private final float ON_MAP_RADIUS = 750; //radius around user in which nearby cloud anchors and their geofences will be marked on the map
 
     private final static LocationRequest FOREGROUND_LOCATIONREQUEST = LocationRequest.create()
@@ -90,8 +90,8 @@ public class LocationApplication extends Application implements Application.Acti
     public FusedLocationProviderClient locationClient;
     public HashSet<Circle> circles = new HashSet<Circle>();
 
-    private Location mLastLocation = null;
-    private Location locationOfSearch = null;
+    private static Location mLastLocation = null;
+    private static Location locationOfSearch = null;
     private static boolean locationUpdatesActive = false;
     private static LocationRequest activeLocationRequest = null;
     private static LocationRequest desiredLocationRequest = BACKGROUND_LOCATIONREQUEST;
@@ -344,7 +344,7 @@ public class LocationApplication extends Application implements Application.Acti
         return null;
     }
 
-    public void setLocationOfSearch(Location location) {
+    public static void setLocationOfSearch(Location location) {
         locationOfSearch = location;
     }
 
@@ -356,7 +356,7 @@ public class LocationApplication extends Application implements Application.Acti
         return mLastLocation;
     }
 
-    public Location getLastLocation() {
+    public static Location getLastLocation() {
         return mLastLocation;
     }
 
@@ -463,7 +463,7 @@ public class LocationApplication extends Application implements Application.Acti
 
         //execute a function that gets anchors within SEARCH_RADIUS from database
         doormatManager.setVolleyCallback(this);
-        doormatManager.getDoormats(this, lat, lng);
+        doormatManager.getDoormats(this, lat, lng, SEARCH_RADIUS);
 
     }
 
@@ -485,7 +485,7 @@ public class LocationApplication extends Application implements Application.Acti
 
         doormatMap.clear();
         for (UserData.Doormat d : doormatSet) {
-            doormatMap.put(d.getDoormat_id(), d);
+            doormatMap.put(d.getAnchor_id(), d);
         }
 
         updateDoormatsFound();
@@ -508,7 +508,7 @@ public class LocationApplication extends Application implements Application.Acti
         SharedPreferences sharedPref = androidx.preference.PreferenceManager.getDefaultSharedPreferences(this);
         HashSet<String> foundAnchors = new HashSet<String>(sharedPref.getStringSet("found anchors", new HashSet<String>()));
         for (UserData.Doormat d : doormatSet) {
-            if (foundAnchors.contains(d.getDoormat_id())) {
+            if (foundAnchors.contains(d.getAnchor_id())) {
                 d.setFound(true);
             }
         }
@@ -520,17 +520,17 @@ public class LocationApplication extends Application implements Application.Acti
             for (Circle c : circles) {
                 UserData.Doormat d = (UserData.Doormat) c.getTag();
                 assert d != null;
-                if (foundAnchors.contains(d.getDoormat_id())) {
+                if (foundAnchors.contains(d.getAnchor_id())) {
                     d.setFound(true);
                 }
             }
         }
     }
 
-    public void updateDoormatFound(String resolvedAnchorID) {
+    public static void updateDoormatFound(String resolvedAnchorID) {
         //set doormats' found field based on locally-stored set
         for (UserData.Doormat d : doormatSet) {
-            if (d.getDoormat_id().equals(resolvedAnchorID)) {
+            if (d.getAnchor_id().equals(resolvedAnchorID)) {
                 d.setFound(true);
             }
         }
@@ -559,7 +559,7 @@ public class LocationApplication extends Application implements Application.Acti
 
         if (!newDoormats.isEmpty()) {
             for (UserData.Doormat d : newDoormats) {
-                geofenceList.add(geoHelper.getGeofence(String.valueOf(d.getDoormat_id()), new LatLng(d.getLatitude(), d.getLongitude()), GEOFENCE_RADIUS,
+                geofenceList.add(geoHelper.getGeofence(String.valueOf(d.getAnchor_id()), new LatLng(d.getLatitude(), d.getLongitude()), GEOFENCE_RADIUS,
                         Geofence.GEOFENCE_TRANSITION_ENTER | Geofence.GEOFENCE_TRANSITION_DWELL | Geofence.GEOFENCE_TRANSITION_EXIT));
             }
             GeofencingRequest geofencingRequest = geoHelper.getGeofencingRequest(geofenceList);
@@ -588,7 +588,7 @@ public class LocationApplication extends Application implements Application.Acti
 
         if (!oldDoormats.isEmpty()) {
             for (UserData.Doormat d : oldDoormats) {
-                requestIds.add(String.valueOf(d.getDoormat_id()));
+                requestIds.add(String.valueOf(d.getAnchor_id()));
             }
         }
         geoClient.removeGeofences(requestIds);

@@ -37,7 +37,6 @@ public class MapActivity extends DrawerBaseActivity implements OnMapReadyCallbac
     LocationApplication locationApplication;
 
     private final int VIEW_MODE_REQUEST_CODE = 1;
-//    boolean isPlaced;
 
     //we may want this constants again if we re-implement in-app location permission requests
     //i temporarily removed location requests to make debugging simpler, but we can add them again if we want

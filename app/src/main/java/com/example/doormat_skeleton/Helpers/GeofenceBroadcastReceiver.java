@@ -7,11 +7,18 @@ import android.location.Location;
 import android.util.Log;
 import android.widget.Toast;
 
+import com.example.doormat_skeleton.DoormatManager;
 import com.example.doormat_skeleton.LocationApplication;
+import com.example.doormat_skeleton.MapActivity;
 import com.example.doormat_skeleton.UserData;
 import com.example.doormat_skeleton.ViewMode;
 import com.google.android.gms.location.Geofence;
 import com.google.android.gms.location.GeofencingEvent;
+import com.google.android.gms.maps.GoogleMap;
+import com.google.gson.Gson;
+
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -20,10 +27,11 @@ import java.util.List;
 import java.util.Locale;
 import java.util.stream.Collectors;
 
-public class GeofenceBroadcastReceiver extends BroadcastReceiver {
+public class GeofenceBroadcastReceiver extends BroadcastReceiver implements DoormatManager.VolleyCallback {
 
     private static final String TAG = "GeofenceBroadcastReceiv";
-    
+    private static String lastId;
+
     @Override
     public void onReceive(Context context, Intent intent) {
 
@@ -47,16 +55,20 @@ public class GeofenceBroadcastReceiver extends BroadcastReceiver {
         switch (transitionType) {
             case Geofence.GEOFENCE_TRANSITION_ENTER:
                 Toast.makeText(context, "GEOFENCE_TRANSITION_ENTER", Toast.LENGTH_SHORT).show();
-                for (Geofence geofence: new ArrayList<Geofence>(geofenceList)) {
-                    Log.d(TAG, "onReceive: " + geofence.getRequestId());
-                }
 
+                //update entered geofences list
                 LocationApplication.addEnteredGeofences(new ArrayList<Geofence>(geofenceList));
-                ViewMode.newIDsToResolve(new ArrayList<Geofence>(geofenceList));
 
+                //send notification
                 notifString = getNotifString(userLocation);
                 if (!notifString.equals("No nearby undiscovered anchors.")) {
                     notificationHelper.sendHighPriorityNotification("Nearby undiscovered anchors:", notifString, LocationApplication.class);
+                }
+
+                //retrieve child nodes for each ID
+                for (Geofence geofence: new ArrayList<Geofence>(geofenceList)) {
+                    Log.d(TAG, "onReceive: " + geofence.getRequestId());
+                    getChildNodes(geofence.getRequestId());
                 }
                 break;
             case Geofence.GEOFENCE_TRANSITION_DWELL:
@@ -81,7 +93,7 @@ public class GeofenceBroadcastReceiver extends BroadcastReceiver {
 
         for (Geofence g : LocationApplication.getEnteredGeofences().values()) {
             for (UserData.Doormat d : LocationApplication.getCurrentDoormatSet()) {
-                if (g.getRequestId().equals(String.valueOf(d.getDoormat_id()))) {
+                if (g.getRequestId().equals(String.valueOf(d.getAnchor_id()))) {
 
                     double lat1 = userLocation.getLatitude();
                     double lat2 = d.getLatitude();
@@ -106,7 +118,7 @@ public class GeofenceBroadcastReceiver extends BroadcastReceiver {
             List<UserData.Doormat> enteredDoormatsList = enteredDoormats.stream().limit(3).collect(Collectors.toList());
 
             for (UserData.Doormat d : enteredDoormatsList) {
-                notifString.append(d.getDoormat_id());
+                notifString.append(d.getAnchor_id());
                 notifString.append(", ");
                 notifString.append(d.getColor());
                 notifString.append(", ");
@@ -123,8 +135,22 @@ public class GeofenceBroadcastReceiver extends BroadcastReceiver {
         }
     }
 
-    public static void sendNotif(Location userLocation, Context context) {
-        NotificationHelper notificationHelper = new NotificationHelper(context);
-        notificationHelper.sendHighPriorityNotification("Nearby undiscovered anchors:", getNotifString(userLocation), LocationApplication.class);
+    public void getChildNodes(String anchor_id) {
+        Log.i(TAG, "getChildNodes");
+        DoormatManager doormatManager = new DoormatManager();
+
+        doormatManager.setVolleyCallback(this);
+        doormatManager.getChildNodes(anchor_id);
+
+    }
+
+    @Override
+    public void onSuccessResponse(String result) throws JSONException {
+        Log.i(TAG, "onSuccessResponse");
+//        Toast.makeText(this, result, Toast.LENGTH_LONG).show();
+
+        JSONObject obj = new JSONObject(result);
+        UserData user_data = (UserData) new Gson().fromJson(obj.toString(), UserData.class);
+        ViewMode.newIDToResolve(user_data.getChildData());
     }
 }

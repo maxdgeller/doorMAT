@@ -58,7 +58,7 @@ public class Profile extends DrawerBaseActivity implements DoormatManager.Volley
 
         doormatManager = new DoormatManager();
 
-        doormatManager.getDoormats(this, 28.135974884033203, -82.50953674316406);
+        doormatManager.getDoormats(this, 28.135974884033203, -82.50953674316406, LocationApplication.SEARCH_RADIUS);
         doormatManager.setVolleyCallback(this);
 
 //        String connectionsJSONString = getPreferences(MODE_PRIVATE).getString(KEY_CONNECTIONS, null);

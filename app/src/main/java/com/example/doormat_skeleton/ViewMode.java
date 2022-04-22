@@ -6,9 +6,6 @@ import static android.content.ContentValues.TAG;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.preference.PreferenceManager;
 
-import android.app.Activity;
-
-import android.content.Intent;
 import android.content.SharedPreferences;
 
 import android.location.Location;
@@ -20,22 +17,21 @@ import android.view.View;
 
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
-import android.widget.Button;
-import android.widget.ImageButton;
 
 import android.widget.Spinner;
 import android.widget.Toast;
 
-import com.example.doormat_skeleton.Helpers.SnackbarHelper;
 import com.google.android.gms.location.Geofence;
-import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.ar.core.Anchor;
 
 import com.google.ar.core.HitResult;
 import com.google.ar.core.Plane;
 
 import com.google.ar.core.Session;
+import com.google.ar.sceneform.Node;
+import com.google.ar.sceneform.math.Quaternion;
 import com.google.ar.sceneform.rendering.Material;
+import com.google.ar.sceneform.rendering.Renderable;
 import com.google.ar.sceneform.ux.ArFragment;
 import com.google.ar.sceneform.AnchorNode;
 import com.google.ar.sceneform.FrameTime;
@@ -50,184 +46,90 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
-import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Queue;
 import java.util.concurrent.CompletableFuture;
 
-public class ViewMode extends AppCompatActivity  {
+public class ViewMode extends AppCompatActivity implements AdapterView.OnItemSelectedListener {
 
     private ArFragment arFragment;
 
+    String mName;
+
+    /***** State Constants (for convenience) *****/
+    private static final Anchor.CloudAnchorState TASK_IN_PROGRESS = Anchor.CloudAnchorState.TASK_IN_PROGRESS;
+    private static final Anchor.CloudAnchorState SUCCESS = Anchor.CloudAnchorState.SUCCESS;
+
     /***** Data from outside ViewMode *****/
-    LocationApplication locationApplication;
     HashMap<String, UserData.Doormat> doormatMap = LocationApplication.getCurrentDoormatMap();
-    HashSet<UserData.Doormat> currentMats;
-    ArrayList<Geofence> geofences;
 
-    /****** Rendering anchors ******/
-    //acceptable colors
-    private static final String[] COLORS = new String[]{
-            "red", "green", "blue",
-            "cyan", "magenta", "yellow", "black",  "grey", "white",
-            "aqua", "fuchsia", "lime", "maroon", "navy", "olive", "purple", "silver", "teal"
-    };
-    //example of a key: {"red", "cylinder"}
-    private final Map<String[], ModelRenderable> madeModels = new HashMap<String[], ModelRenderable>();
-    //example of a key: "blue"
-    private final Map<String, CompletableFuture<Material>> colorMaterials = new HashMap<String, CompletableFuture<Material>>();
-
-    /****** Resolving anchors ******/
-    //add to Queue from Geofence enter event
+    /** Queue of IDs of Anchors that need to be resolved. ******/
     private static final Queue<String> idsToResolve = new LinkedList<String>();
-    //anchors being resolved
-    private final Queue<Anchor> resolvingAnchors = new LinkedList<Anchor>();
-    //anchors that have finished resolving
-    private final Queue<Anchor> resolvedAnchors = new LinkedList<Anchor>();
-    //add to Queue from Geofence exit event
+
+    /** Queue of Anchors that are currently resolving. ******/
+    private final Queue<Anchor> resolving = new LinkedList<Anchor>();
+
+    /** Queue of AnchorNodes whose Anchors have been resolved. ******/
+    private final Queue<AnchorNode> resolved = new LinkedList<AnchorNode>();
+
+    /** Queue of IDs of Anchors that should be detached. ******/
     private static final Queue<String> idsToRemove = new LinkedList<String>();
 
-    /****** Hosting anchors ******/
+    /** Resolved child nodes waiting to be rendered. *****/
+    private static final Queue<UserData.ChildNode> childrenWaiting = new LinkedList<UserData.ChildNode>();
+
+    /* Hosting anchors */
     private final StoreManager storeManager = new StoreManager();
     private Anchor anchorToHost;
-    private boolean isPlaced = false;
-    String colorChoice = "blue";
-    String shapeChoice = "sphere";
-    Spinner colorSpinner;
-    Button hostBtn;
-    HitResult lastHitResult;
+    private AnchorNode rootNode;
+    private TransformableNode rootTNode;
 
-    /****** Session data ******/
-    SessionManager sessionManager;
-    String mName;
+    /** Acceptable colors. ******/
+    private static final String[] COLORS = new String[] { //acceptable color strings
+            "red", "green", "blue", "cyan", "magenta", "yellow", "black",  "grey", "white",
+            "aqua", "fuchsia", "lime", "maroon", "navy", "olive", "purple", "silver", "teal"};
+    /** Map of {color, shape} array keys and their associated ModelRenderables. ******/
+    private static final Map<String[], ModelRenderable> madeModels = new HashMap<String[], ModelRenderable>();
+    /** Map of ModelRenderable keys and their associated {color, shape} arrays. ******/
+    private static final Map<Renderable, String[]> madeModelsReverse = new HashMap<Renderable, String[]>();
+    /** Map of color keys and their associated Material CompletableFutures. ******/
+    private static final Map<String, CompletableFuture<Material>> colorMaterials = new HashMap<String, CompletableFuture<Material>>();
+
+    private static String colorChoice = "blue";
+    private static String shapeChoice = "sphere";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_view_mode);
 
-        /***** Data from outside ViewMode *****/
-        locationApplication = (LocationApplication) getApplication();
-
-        sessionManager = new SessionManager(this);
+        SessionManager sessionManager = new SessionManager(this);
         sessionManager.checkLogin();
-        HashMap<String, String> user = sessionManager.getUserDetail();
-        mName = user.get(SessionManager.USERNAME);
+        mName = sessionManager.getUserDetail().get(SessionManager.USERNAME);
 
-        Button clear = findViewById(R.id.clear);
-        hostBtn = findViewById(R.id.hostBtn);
-
-        ImageButton sphereBtn = findViewById(R.id.sphereBtn);
-        ImageButton cubeBtn = findViewById(R.id.cubeBtn);
-        ImageButton cylinderBtn = findViewById(R.id.cylinderBtn);
-
-        colorSpinner = findViewById(R.id.color_spinner);
-        colorSpinner.setVisibility(View.VISIBLE);
-        ArrayAdapter<String> dataAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_spinner_dropdown_item, COLORS);
-
-        colorSpinner.setAdapter(dataAdapter);
-        colorSpinner.setVisibility(View.VISIBLE);
-        colorSpinner.setPrompt("Color");
-        colorSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-             @Override
-             public void onItemSelected(AdapterView<?> adapterView, View view, int i, long l) {
-                 Log.d(TAG, "onItemSelected: color: " + colorChoice);
-
-                 String color = colorSpinner.getSelectedItem().toString();
-                 colorChoice = color;
-                 placeItem(lastHitResult);
-//                 colorSpinner.setBackgroundColor(android.graphics.Color.parseColor(color));
-             }
-
-             @Override
-             public void onNothingSelected(AdapterView<?> adapterView) {
-
-             }
-         });
-
-        hostBtn.setVisibility(View.GONE);
-        FloatingActionButton back_btn = findViewById(R.id.back_btn);
+        Spinner colorSpinner = findViewById(R.id.color_spinner);
+        colorSpinner.setAdapter(new ArrayAdapter<String>(this, android.R.layout.simple_spinner_dropdown_item, COLORS));
+        colorSpinner.setOnItemSelectedListener(this);
 
         for (String cStr : COLORS) {
             Color color = new Color(android.graphics.Color.parseColor(cStr));
             colorMaterials.put(cStr, MaterialFactory.makeOpaqueWithColor(getApplicationContext(), color));
         }
 
-        geofences = new ArrayList<Geofence>(LocationApplication.getEnteredGeofences().values());
-        if (idsToResolve.isEmpty()) { newIDsToResolve(geofences); }
-
-        currentMats = new HashSet<UserData.Doormat>();
-
-        clear.setOnClickListener(view -> {
-            clearPlacedAnchor();
-            hostBtn.setVisibility(View.GONE);
-        });
-
-
-        back_btn.setOnClickListener(view -> {
-            if(isPlaced) {
-                Intent intent = new Intent(ViewMode.this, MapActivity.class);
-                intent.putExtra("isPlaced", isPlaced);
-                setResult(Activity.RESULT_OK, intent);
-                finish();
-            }
-            else{
-                Intent intent = new Intent(ViewMode.this, MapActivity.class);
-                setResult(Activity.RESULT_CANCELED, intent);
-                finish();
-            }
-        });
-
-        sphereBtn.setOnClickListener(view -> {
-            shapeChoice = "sphere";
-            placeItem(lastHitResult);
-        });
-
-        cubeBtn.setOnClickListener(view -> {
-            shapeChoice = "cube";
-            placeItem(lastHitResult);
-        });
-
-        cylinderBtn.setOnClickListener(view -> {
-            shapeChoice = "cylinder";
-            placeItem(lastHitResult);
-        });
+        idsToResolve.clear();
+        newIDsToResolve(new ArrayList<Geofence>(LocationApplication.getEnteredGeofences().values()));
 
         arFragment = (CustomArFragment) getSupportFragmentManager().findFragmentById(R.id.ux_fragment);
         assert arFragment != null;
         arFragment.getArSceneView().getScene().addOnUpdateListener(this::onUpdateFrame);
-        arFragment.setOnTapArPlaneListener(
-                (HitResult hitResult, Plane plane, MotionEvent motionEvent) -> {
-                    if (plane.getType() == Plane.Type.HORIZONTAL_UPWARD_FACING) {
-                        if (anchorToHost == null || anchorToHost.getCloudAnchorState() != Anchor.CloudAnchorState.TASK_IN_PROGRESS) {
-                            placeItem(hitResult);
-                            lastHitResult = hitResult;
-                            hostBtn.setVisibility(View.VISIBLE);
-                        }
-                    }
-                }
-        );
-
-        hostBtn.setOnClickListener(view -> {
-            Session session = arFragment.getArSceneView().getSession();
-            assert session != null;
-            anchorToHost = session.hostCloudAnchor(anchorToHost);
-            Toast.makeText(getApplicationContext(),"Now Hosting...", Toast.LENGTH_LONG).show();
-        });
-    }
-
-    private void clearPlacedAnchor() {
-        if (anchorToHost != null) {
-            anchorToHost.detach();
-            anchorToHost = null;
-            isPlaced = false;
-        }
+        arFragment.setOnTapArPlaneListener(this::onTapPlane);
     }
 
     //call this whenever you need a ModelRenderable
     private ModelRenderable getRenderable(String color, String shape) {
         String[] key = new String[]{color, shape};
-        if (madeModels.containsKey(key)) { Log.d(TAG, "Retrieving model: " + key[0] + " " + key[1]); return madeModels.get(key); }
+        if (madeModels.containsKey(key)) { return madeModels.get(key); }
 
         ModelRenderable model;
         Material material = colorMaterials.get(color).getNow(null);
@@ -237,96 +139,145 @@ public class ViewMode extends AppCompatActivity  {
         else {model = ShapeFactory.makeCylinder(0.1f, 0.3f, new Vector3(0.0f, 0.15f, 0.0f), material);}
 
         madeModels.put(key, model);
+        madeModelsReverse.put(model, key);
         return madeModels.get(key);
     }
 
-    private TransformableNode renderAnchor(Anchor a, String color, String shape) {
-        AnchorNode anchorNode = new AnchorNode(a);
-        anchorNode.setParent(arFragment.getArSceneView().getScene());
-        TransformableNode tNode = new TransformableNode(arFragment.getTransformationSystem());
-        tNode.setParent(anchorNode);
-        tNode.setRenderable(getRenderable(color, shape));
-        return tNode;
+    private void renderResolvedChild(UserData.ChildNode childNode) {
+        AnchorNode an = new AnchorNode();
+        an.setParent(arFragment.getArSceneView().getScene().findByName(childNode.getAnchor_id()));
+        an.setLocalPosition(childNode.getPosition());
+        an.setWorldScale(childNode.getScale());
+        an.setWorldRotation(childNode.getRotation());
+        an.setRenderable(getRenderable(childNode.getColor(), childNode.getShape()));
     }
-
 
     private void onUpdateFrame(FrameTime frameTime) {
         checkUpdatedAnchor();
     }
 
+    private synchronized void checkUpdatedAnchor() {
+        if (!idsToResolve.isEmpty()) { resolveNext(); }
+        if (!resolving.isEmpty()) { checkNextResolving(); }
+        if (!resolved.isEmpty() && !childrenWaiting.isEmpty()) { renderNextChild(); }
+        //haven't yet written code to detach anchors that are no longer nearby
+        if (!resolved.isEmpty() && !idsToRemove.isEmpty()) {  }
+        if (anchorToHost != null) { checkHosting(); }
+    }
 
-    private synchronized void checkUpdatedAnchor(){
-//        Log.i(TAG, "checkUpdatedAnchor");
+    private synchronized void resolveNext() {
+        Toast.makeText(getApplicationContext(),"attempting to resolve " + idsToResolve.peek(), Toast.LENGTH_LONG).show();
+        //Each frame, remove a single ID from idsToResolve and add a new anchornode to resolvingAnchors
+        Session session = arFragment.getArSceneView().getSession();
+        assert session != null;
+        Anchor a = session.resolveCloudAnchor(idsToResolve.poll());
+        resolving.add(a);
+    }
 
-        if (!idsToResolve.isEmpty()) {
-            //Each frame, remove a single ID from idsToResolve and add a new anchornode to resolvingAnchors
-            Anchor a = arFragment.getArSceneView().getSession().resolveCloudAnchor(idsToResolve.poll());
-            resolvingAnchors.add(a);
+    private synchronized void checkNextResolving() {
+        Anchor a = resolving.poll();
+        assert a != null;
+        Anchor.CloudAnchorState state = a.getCloudAnchorState();
+        logState(a, state);
+        showState(a, state);
+
+        if (state == TASK_IN_PROGRESS) { resolving.add(a); } //put resolving anchor at end of queue
+
+        else if (state == SUCCESS) {
+            UserData.Doormat d = doormatMap.get(a.getCloudAnchorId());
+            assert d != null;
+            addToFoundAnchors(a.getCloudAnchorId());
+
+            AnchorNode anchorNode = new AnchorNode(a);
+            anchorNode.setName(a.getCloudAnchorId());
+
+            resolved.add(anchorNode);
         }
-        if (!resolvingAnchors.isEmpty()) {
-            Anchor a = resolvingAnchors.poll();
-            Anchor.CloudAnchorState state = a.getCloudAnchorState();
-            Log.d(TAG, "State: " + state.name() + ", ID: " + a.getCloudAnchorId());
-            if (state == Anchor.CloudAnchorState.TASK_IN_PROGRESS) {
-                //move to the end of the queue if resolution in progress
-                resolvingAnchors.add(a);
-            }
-            else if (state == Anchor.CloudAnchorState.SUCCESS) {
-                UserData.Doormat d = doormatMap.get(a.getCloudAnchorId());
 
-                addToFoundAnchors(a.getCloudAnchorId());
+        else if (state.isError()) { showState(a, state); a.detach(); } //show error and detach anchor
+    }
 
-                assert d != null;
-                renderAnchor(a, d.getColor(), d.getShape());
+    private synchronized void renderNextChild() {
+        UserData.ChildNode childNode = childrenWaiting.poll();
+        assert childNode != null;
 
-                resolvedAnchors.add(a);
-            }
-            else if (state.isError()) {
-                a.detach();
-                Toast.makeText(getApplicationContext(),"ERROR: " + state.name() + ", ID: " + a.getCloudAnchorId(), Toast.LENGTH_LONG).show();
-            }
+        AnchorNode an = (AnchorNode) arFragment.getArSceneView().getScene().findByName(childNode.getAnchor_id());
+        assert an != null;
+        Anchor.CloudAnchorState state = Objects.requireNonNull(an.getAnchor()).getCloudAnchorState();
+
+        if (state == SUCCESS) {
+            renderResolvedChild(childNode);
+        }
+        else if (state.isError()) {
+            logState(an.getAnchor(), state);
+            showState(an.getAnchor(), state);
+        }
+        else {
+            childrenWaiting.add(childNode);
+        }
+    }
+
+    private synchronized void checkHosting() {
+        Anchor.CloudAnchorState hostState = anchorToHost.getCloudAnchorState();
+
+        if (hostState != TASK_IN_PROGRESS) {
+            logState(anchorToHost, hostState);
         }
 
-        if (anchorToHost != null) {
-            Anchor.CloudAnchorState hostState = anchorToHost.getCloudAnchorState();
-            if (hostState.isError()) {
-                Toast.makeText(this, "Error Hosting...", Toast.LENGTH_LONG).show();
+        if (hostState == TASK_IN_PROGRESS) { return; } //skip rest of method if hosting in progress
+        if (hostState.isError()) { showState(anchorToHost, hostState); anchorToHost = null; } //failed hosting
+
+        else if (hostState == Anchor.CloudAnchorState.SUCCESS) {
+            logState(anchorToHost, hostState);
+            String id = anchorToHost.getCloudAnchorId();
+
+            //store data
+            storeAnchor(id);
+            recursivelyStoreDescendants(rootNode, id);
+
+            Toast.makeText(this, "Anchor hosted.\nCloud ID: " + anchorToHost.getCloudAnchorId(), Toast.LENGTH_LONG).show();
+
+            addToFoundAnchors(anchorToHost.getCloudAnchorId());
+            anchorToHost.detach();
+            anchorToHost = null;
+            //update global doormats, including newly hosted anchor
+            LocationApplication.setLocationOfSearch(null);
+
+        }
+    }
+
+    private synchronized void storeAnchor(String id) {
+        String[] val = madeModelsReverse.get(rootTNode.getRenderable());
+        assert val != null;
+        Location location = LocationApplication.getLastLocation();
+        double lat = location.getLatitude();
+        double lng = location.getLongitude();
+        storeManager.storeDoormat(this, id, val[0], val[1], lat, lng, mName);
+    }
+
+    private synchronized void recursivelyStoreDescendants(Node parent, String id) {
+        for (Node child : parent.getChildren()) {
+            if (child.getClass() == TransformableNode.class) {
+                // e.g. child's pos (0, 3, 1) minus rootNode's pos (1, 2, -4) equals local pos (-1, 1, 5)
+                Vector3 pos = Vector3.subtract(child.getWorldPosition(), rootNode.getWorldPosition());
+                Vector3 scale = child.getWorldScale();
+                Quaternion rot = child.getWorldRotation();
+                String[] val = madeModelsReverse.get(child.getRenderable()); //array of color and shape strings
+                assert val != null;
+                storeManager.storeChildNode(this, id, val[0], val[1], pos, scale, rot);
             }
-            else if (hostState == Anchor.CloudAnchorState.SUCCESS) {
-                Log.d(TAG, "checkUpdatedAnchor: " + anchorToHost.getCloudAnchorId());
-
-                Location location = locationApplication.getLastLocation();
-                double latitude = location.getLatitude();
-                double longitude = location.getLongitude();
-
-                storeManager.storeDoormat(this,
-                        anchorToHost.getCloudAnchorId(),
-                        isPlaced,
-                        latitude,
-                        longitude,
-                        mName,
-                        colorChoice,
-                        shapeChoice);
-
-                Toast.makeText(this, "Anchor hosted. Cloud ID: " + anchorToHost.getCloudAnchorId(), Toast.LENGTH_LONG).show();
-
-                addToFoundAnchors(anchorToHost.getCloudAnchorId());
-                clearPlacedAnchor();
-
-                //update global doormats, including newly hosted anchor
-                locationApplication.setLocationOfSearch(null);
-
+            if (!child.getChildren().isEmpty()) {
+                recursivelyStoreDescendants(child, id);
             }
         }
     }
 
-    private void placeItem(HitResult hitResult){
-        if (colorChoice != null && shapeChoice != null && hitResult != null) {
-            clearPlacedAnchor();
-            anchorToHost = hitResult.createAnchor();
-            renderAnchor(anchorToHost, colorChoice, shapeChoice).select();
-            isPlaced = true;
-        }
+    private void showState(Anchor a, Anchor.CloudAnchorState state) {
+        Toast.makeText(getApplicationContext(),"ID: " + a.getCloudAnchorId() + "\nState: " + state.name(), Toast.LENGTH_LONG).show();
+    }
+
+    private void logState(Anchor a, Anchor.CloudAnchorState state) {
+        Log.d(TAG,"\nID: " + a.getCloudAnchorId() + "\nState: " + state.name());
     }
 
     //add the ID of a just-resolved anchor to the locally-stored set and update current doormats
@@ -340,23 +291,122 @@ public class ViewMode extends AppCompatActivity  {
         editor.putStringSet("found anchors", foundAnchors);
         editor.apply();
 
-        locationApplication.updateDoormatFound(resolvedAnchorID);
+        LocationApplication.updateDoormatFound(resolvedAnchorID);
 
     }
 
     //methods called by GeofenceBroadcastReceiver upon events being triggered
-    public static void newIDsToResolve(ArrayList<Geofence> triggeredGeofences) {
+    private static synchronized void newIDsToResolve(ArrayList<Geofence> triggeredGeofences) {
         for (Geofence g : triggeredGeofences) {
             Log.d(TAG, "Adding triggered Geofence to idsToResolve, ID: " + g.getRequestId());
             idsToResolve.add(g.getRequestId());
         }
     }
-    public static void newIDsToRemove(ArrayList<Geofence> triggeredGeofences) {
+
+    //methods called by GeofenceBroadcastReceiver upon events being triggered
+    public static synchronized void newIDToResolve(ArrayList<UserData.ChildNode> newChildNodes) {
+        idsToResolve.add(newChildNodes.get(0).getAnchor_id());
+        childrenWaiting.addAll(newChildNodes);
+    }
+
+    public static synchronized void newIDsToRemove(ArrayList<Geofence> triggeredGeofences) {
         for (Geofence g : triggeredGeofences) {
             idsToRemove.add(g.getRequestId());
         }
     }
 
+    public void onClickSphere(View view) { shapeChoice = "sphere"; updateSelectedNode(); }
+    public void onClickCube(View view) { shapeChoice = "cube"; updateSelectedNode(); }
+    public void onClickCylinder(View view) { shapeChoice = "cylinder"; updateSelectedNode(); }
+
+    private void updateSelectedNode() {
+        TransformableNode tNode = (TransformableNode) arFragment.getTransformationSystem().getSelectedNode();
+        if (tNode != null) {
+            tNode.setRenderable(getRenderable(colorChoice, shapeChoice));
+        }
+    }
+
+    public void onClickBack(View view) { finish(); }
+
+    public void onClickRemove(View view) {
+        TransformableNode tNode = (TransformableNode) arFragment.getTransformationSystem().getSelectedNode();
+        if (tNode != null) {
+            arFragment.getTransformationSystem().selectNode(null);
+            tNode.setRenderable(null);
+            tNode.setParent(null);
+            tNode.setEnabled(false);
+        }
+        view.setVisibility(View.INVISIBLE);
+        if (rootNode != null && !rootNode.getChildren().isEmpty()) {
+            findViewById(R.id.hostBtn).setVisibility(View.INVISIBLE);
+        }
+    }
+
+    public void onClickHost(View view) {
+        view.setVisibility(View.INVISIBLE);
+        Session session = arFragment.getArSceneView().getSession();
+        assert session != null;
+        anchorToHost = session.hostCloudAnchor(rootNode.getAnchor());
+        Toast.makeText(getApplicationContext(),"Now Hosting...", Toast.LENGTH_LONG).show();
+    }
+
+    public void onClickClear(View view) {
+        if (rootNode != null) {
+            rootTNode.setRenderable(null);
+            rootTNode = null;
+            Anchor anchor = rootNode.getAnchor();
+            if (anchor != null) {
+                anchor.detach();
+            }
+            rootNode = null;
+        }
+        findViewById(R.id.hostBtn).setVisibility(View.INVISIBLE);
+        findViewById(R.id.remove).setVisibility(View.INVISIBLE);
+        view.setVisibility(View.INVISIBLE);
+    }
+
+    @Override
+    public void onItemSelected(AdapterView<?> parent, View v, int position, long id) {
+        Spinner colorSpinner = findViewById(R.id.color_spinner);
+        colorChoice = colorSpinner.getSelectedItem().toString();
+        Log.d(TAG, "onItemSelected: color: " + colorChoice);
+        updateSelectedNode();
+    }
+
+    @Override
+    public void onNothingSelected(AdapterView<?> arg0) { }
+
+    private void onTapPlane(HitResult hitResult, Plane plane, MotionEvent motionEvent) {
+        if (plane.getType() == Plane.Type.HORIZONTAL_UPWARD_FACING) {
+            //if no anchor exists, create one and move rootNode to its position
+            if (rootNode == null) {
+                rootNode = new AnchorNode();
+                rootNode.setParent(arFragment.getArSceneView().getScene());
+                rootNode.setAnchor(hitResult.createAnchor());
+
+                rootTNode = new TransformableNode(arFragment.getTransformationSystem());
+                rootTNode.getTranslationController().setEnabled(false);
+                rootTNode.setParent(rootNode);
+                rootTNode.setRenderable(getRenderable(colorChoice, shapeChoice));
+
+                findViewById(R.id.clear).setVisibility(View.VISIBLE);
+            }
+            //if an anchor and rootNode exist, create a new transformable node
+            else {
+                AnchorNode an = new AnchorNode();
+                an.setParent(rootNode);
+                an.setAnchor(hitResult.createAnchor());
+
+                TransformableNode tNode = new TransformableNode(arFragment.getTransformationSystem());
+                tNode.setParent(an);
+                tNode.setRenderable(getRenderable(colorChoice, shapeChoice));
+                tNode.select();
+                findViewById(R.id.hostBtn).setVisibility(View.VISIBLE);
+                findViewById(R.id.remove).setVisibility(View.VISIBLE);
+            }
+
+        }
+    }
 }
 
 

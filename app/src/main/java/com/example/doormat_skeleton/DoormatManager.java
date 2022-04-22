@@ -38,9 +38,9 @@ public class DoormatManager {
         this.callback = callback;
     }
 
-    public void getDoormats(Context context, double lat, double lon) {
+    public void getDoormats(Context context, double lat, double lon, double radius) {
         // url to post our data
-        String url = "http://34.203.214.232/mysite/fetchdoormats.php";
+        String url = "http://34.203.214.232/mysite/fetchanchors.php";
 
         // creating a new variable for our request queue
         RequestQueue queue = Volley.newRequestQueue(context.getApplicationContext());
@@ -58,7 +58,7 @@ public class DoormatManager {
 
 
                 // on below line we are displaying a success toast message.
-                Toast.makeText(context.getApplicationContext(), "Nearby doormats retrieved.", Toast.LENGTH_SHORT).show();
+                Toast.makeText(context.getApplicationContext(), "Nearby anchors retrieved.", Toast.LENGTH_SHORT).show();
 //                try {
 //                    JSONObject respObj = new JSONObject(response);
 ////                    Toast.makeText(context.getApplicationContext(), respObj.toString(), Toast.LENGTH_LONG).show();
@@ -78,10 +78,52 @@ public class DoormatManager {
                 Map<String, String> params = new HashMap<String, String>();
                 params.put("latitude", String.valueOf(lat));
                 params.put("longitude", String.valueOf(lon));
+                params.put("radius", String.valueOf(radius));
                 return params;
             }
         };
 
+        queue.add(request);
+    }
+
+    public void getChildNodes(String anchor_id) {
+        // url to post our data
+        String url = "http://34.203.214.232/mysite/fetchchildnodes.php";
+
+        Context context = LocationApplication.getContext();
+
+        // creating a new variable for our request queue
+        RequestQueue queue = Volley.newRequestQueue(context.getApplicationContext());
+
+        StringRequest request = new StringRequest(Request.Method.POST, url, new com.android.volley.Response.Listener<String>() {
+            @Override
+            public void onResponse(String response) {
+                if(response.contains("Data not found")){ return; }
+                try {
+                    callback.onSuccessResponse(response);
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+                Log.d(TAG, "onResponse: " + response);
+
+
+                // on below line we are displaying a success toast message.
+                Toast.makeText(context.getApplicationContext(), "Anchor's child node retrieved.", Toast.LENGTH_SHORT).show();
+            }
+        }, new com.android.volley.Response.ErrorListener() {
+            @Override
+            public void onErrorResponse(VolleyError error) {
+                // method to handle errors.
+                Toast.makeText(context.getApplicationContext(), "Fail to get response = " + error, Toast.LENGTH_SHORT).show();
+            }
+        }) {
+            @Override
+            protected Map<String, String> getParams() {
+                Map<String, String> params = new HashMap<String, String>();
+                params.put("anchor_id", anchor_id);
+                return params;
+            }
+        };
         queue.add(request);
     }
 }
