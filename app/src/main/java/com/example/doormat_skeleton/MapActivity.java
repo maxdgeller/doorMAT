@@ -21,7 +21,6 @@ import com.google.android.gms.maps.model.CameraPosition;
 import com.google.android.gms.maps.model.LatLng;
 
 import java.util.HashSet;
-import java.util.Set;
 
 public class MapActivity extends DrawerBaseActivity implements OnMapReadyCallback {
 
@@ -75,7 +74,7 @@ public class MapActivity extends DrawerBaseActivity implements OnMapReadyCallbac
 
         locationApplication = (LocationApplication) getApplication();
         loadCameraLocation();
-        locationApplication.updateCircles(googleMap, new HashSet<UserData.Doormat>());
+        locationApplication.updateCircles(googleMap);
 
         if ((!googleMap.isMyLocationEnabled()) && (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED)) {
             googleMap.setMyLocationEnabled(true);

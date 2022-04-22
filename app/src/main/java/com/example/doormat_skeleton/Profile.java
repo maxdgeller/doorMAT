@@ -1,9 +1,6 @@
 package com.example.doormat_skeleton;
 
-import androidx.appcompat.app.AppCompatActivity;
-
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.view.View;
@@ -12,23 +9,20 @@ import android.widget.TextView;
 
 import com.example.doormat_skeleton.databinding.ActivityDashboardBinding;
 import com.google.gson.Gson;
-import com.google.gson.reflect.TypeToken;
 
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.lang.reflect.Type;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
 
-public class Profile extends DrawerBaseActivity implements DoormatManager.VolleyCallback {
+public class Profile extends DrawerBaseActivity implements AnchorRetrieval.VolleyCallback {
 
     public static final String KEY_CONNECTIONS = "KEY_CONNECTIONS";
     ActivityDashboardBinding activityDashboardBinding;
     SessionManager sessionManager;
-    DoormatManager doormatManager;
-    HashSet<UserData.Doormat> mDoormats;
+    AnchorRetrieval anchorRetrieval;
+    HashSet<AnchorResult.DatabaseAnchor> mDatabaseAnchors;
     String mName;
 
 
@@ -56,10 +50,10 @@ public class Profile extends DrawerBaseActivity implements DoormatManager.Volley
         TextView setName = findViewById(R.id.usertag);
         setName.setText(mName);
 
-        doormatManager = new DoormatManager();
+        anchorRetrieval = new AnchorRetrieval();
 
-        doormatManager.getDoormats(this, 28.135974884033203, -82.50953674316406, LocationApplication.SEARCH_RADIUS);
-        doormatManager.setVolleyCallback(this);
+        anchorRetrieval.getAnchors(this, 28.135974884033203, -82.50953674316406, LocationApplication.SEARCH_RADIUS);
+        anchorRetrieval.setVolleyCallback(this);
 
 //        String connectionsJSONString = getPreferences(MODE_PRIVATE).getString(KEY_CONNECTIONS, null);
 //        Type type = new TypeToken< List < UserData.Doormat >>() {}.getType();
@@ -76,15 +70,15 @@ public class Profile extends DrawerBaseActivity implements DoormatManager.Volley
         PreferenceManager.getDefaultSharedPreferences(this).edit().putString("MYLABEL", result).apply();
         JSONObject obj = new JSONObject(result);
 
-        UserData user_data = (UserData) new Gson().fromJson(obj.toString(), UserData.class);
-        mDoormats = user_data.getData();
+        AnchorResult user_data = (AnchorResult) new Gson().fromJson(obj.toString(), AnchorResult.class);
+        mDatabaseAnchors = user_data.getData();
 
     }
 
     public int countMats(){
         int placedMats = 0;
-        if(mDoormats != null) {
-            for (UserData.Doormat d : mDoormats) {
+        if(mDatabaseAnchors != null) {
+            for (AnchorResult.DatabaseAnchor d : mDatabaseAnchors) {
                 if (d.getCreated_by().equals(mName)) {
                     placedMats++;
                 }

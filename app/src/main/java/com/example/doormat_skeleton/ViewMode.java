@@ -55,6 +55,8 @@ public class ViewMode extends AppCompatActivity implements AdapterView.OnItemSel
 
     private ArFragment arFragment;
 
+    private static final String TAG = "ViewMode";
+
     String mName;
 
     /***** State Constants (for convenience) *****/
@@ -62,7 +64,7 @@ public class ViewMode extends AppCompatActivity implements AdapterView.OnItemSel
     private static final Anchor.CloudAnchorState SUCCESS = Anchor.CloudAnchorState.SUCCESS;
 
     /***** Data from outside ViewMode *****/
-    HashMap<String, UserData.Doormat> doormatMap = LocationApplication.getCurrentDoormatMap();
+    HashMap<String, AnchorResult.DatabaseAnchor> doormatMap = LocationApplication.getCurrentDoormatMap();
 
     /** Queue of IDs of Anchors that need to be resolved. ******/
     private static final Queue<String> idsToResolve = new LinkedList<String>();
@@ -77,7 +79,7 @@ public class ViewMode extends AppCompatActivity implements AdapterView.OnItemSel
     private static final Queue<String> idsToRemove = new LinkedList<String>();
 
     /** Resolved child nodes waiting to be rendered. *****/
-    private static final Queue<UserData.ChildNode> childrenWaiting = new LinkedList<UserData.ChildNode>();
+    private static final Queue<ChildResult.DatabaseChildNode> childrenWaiting = new LinkedList<ChildResult.DatabaseChildNode>();
 
     /* Hosting anchors */
     private final StoreManager storeManager = new StoreManager();
@@ -143,15 +145,6 @@ public class ViewMode extends AppCompatActivity implements AdapterView.OnItemSel
         return madeModels.get(key);
     }
 
-    private void renderResolvedChild(UserData.ChildNode childNode) {
-        AnchorNode an = new AnchorNode();
-        an.setParent(arFragment.getArSceneView().getScene().findByName(childNode.getAnchor_id()));
-        an.setLocalPosition(childNode.getPosition());
-        an.setWorldScale(childNode.getScale());
-        an.setWorldRotation(childNode.getRotation());
-        an.setRenderable(getRenderable(childNode.getColor(), childNode.getShape()));
-    }
-
     private void onUpdateFrame(FrameTime frameTime) {
         checkUpdatedAnchor();
     }
@@ -159,13 +152,12 @@ public class ViewMode extends AppCompatActivity implements AdapterView.OnItemSel
     private synchronized void checkUpdatedAnchor() {
         if (!idsToResolve.isEmpty()) { resolveNext(); }
         if (!resolving.isEmpty()) { checkNextResolving(); }
-        if (!resolved.isEmpty() && !childrenWaiting.isEmpty()) { renderNextChild(); }
-        //haven't yet written code to detach anchors that are no longer nearby
-        if (!resolved.isEmpty() && !idsToRemove.isEmpty()) {  }
+        if (!resolved.isEmpty()) { renderNextChildren(); }
         if (anchorToHost != null) { checkHosting(); }
     }
 
     private synchronized void resolveNext() {
+        Log.i(TAG, "        resolveNext");
         Toast.makeText(getApplicationContext(),"attempting to resolve " + idsToResolve.peek(), Toast.LENGTH_LONG).show();
         //Each frame, remove a single ID from idsToResolve and add a new anchornode to resolvingAnchors
         Session session = arFragment.getArSceneView().getSession();
@@ -175,49 +167,45 @@ public class ViewMode extends AppCompatActivity implements AdapterView.OnItemSel
     }
 
     private synchronized void checkNextResolving() {
+        Log.i(TAG, "        checkNextResolving");
         Anchor a = resolving.poll();
         assert a != null;
         Anchor.CloudAnchorState state = a.getCloudAnchorState();
-        logState(a, state);
-        showState(a, state);
 
         if (state == TASK_IN_PROGRESS) { resolving.add(a); } //put resolving anchor at end of queue
-
         else if (state == SUCCESS) {
-            UserData.Doormat d = doormatMap.get(a.getCloudAnchorId());
-            assert d != null;
-            addToFoundAnchors(a.getCloudAnchorId());
+            showState(a, state);
+            logState(a, state);
 
             AnchorNode anchorNode = new AnchorNode(a);
+            anchorNode.setParent(arFragment.getArSceneView().getScene());
             anchorNode.setName(a.getCloudAnchorId());
+            addToFoundAnchors(a.getCloudAnchorId());
 
             resolved.add(anchorNode);
         }
-
         else if (state.isError()) { showState(a, state); a.detach(); } //show error and detach anchor
     }
 
-    private synchronized void renderNextChild() {
-        UserData.ChildNode childNode = childrenWaiting.poll();
-        assert childNode != null;
-
-        AnchorNode an = (AnchorNode) arFragment.getArSceneView().getScene().findByName(childNode.getAnchor_id());
-        assert an != null;
-        Anchor.CloudAnchorState state = Objects.requireNonNull(an.getAnchor()).getCloudAnchorState();
-
-        if (state == SUCCESS) {
-            renderResolvedChild(childNode);
-        }
-        else if (state.isError()) {
-            logState(an.getAnchor(), state);
-            showState(an.getAnchor(), state);
-        }
-        else {
-            childrenWaiting.add(childNode);
+    private synchronized void renderNextChildren() {
+        Log.i(TAG, "        renderNextChildren");
+        AnchorNode anchorNode = resolved.poll();
+        assert anchorNode != null;
+        HashSet<ChildResult.DatabaseChildNode> childNodes = LocationApplication.getNearbyChildNodes();
+        for (ChildResult.DatabaseChildNode cn : childNodes) {
+            if (cn.getAnchor_id().equals(Objects.requireNonNull(anchorNode.getAnchor()).getCloudAnchorId())) {
+                Node node = new Node();
+                node.setParent(anchorNode);
+                node.setLocalPosition(cn.getPosition());
+                node.setWorldScale(cn.getScale());
+                node.setWorldRotation(cn.getRotation());
+                node.setRenderable(getRenderable(cn.getColor(), cn.getShape()));
+            }
         }
     }
 
     private synchronized void checkHosting() {
+        Log.i(TAG, "        checkHosting");
         Anchor.CloudAnchorState hostState = anchorToHost.getCloudAnchorState();
 
         if (hostState != TASK_IN_PROGRESS) {
@@ -228,7 +216,7 @@ public class ViewMode extends AppCompatActivity implements AdapterView.OnItemSel
         if (hostState.isError()) { showState(anchorToHost, hostState); anchorToHost = null; } //failed hosting
 
         else if (hostState == Anchor.CloudAnchorState.SUCCESS) {
-            logState(anchorToHost, hostState);
+            showState(anchorToHost, hostState);
             String id = anchorToHost.getCloudAnchorId();
 
             //store data
@@ -247,6 +235,7 @@ public class ViewMode extends AppCompatActivity implements AdapterView.OnItemSel
     }
 
     private synchronized void storeAnchor(String id) {
+        Log.i(TAG, "                storeAnchor");
         String[] val = madeModelsReverse.get(rootTNode.getRenderable());
         assert val != null;
         Location location = LocationApplication.getLastLocation();
@@ -256,6 +245,7 @@ public class ViewMode extends AppCompatActivity implements AdapterView.OnItemSel
     }
 
     private synchronized void recursivelyStoreDescendants(Node parent, String id) {
+        Log.i(TAG, "                recursivelyStoreDescendants");
         for (Node child : parent.getChildren()) {
             if (child.getClass() == TransformableNode.class) {
                 // e.g. child's pos (0, 3, 1) minus rootNode's pos (1, 2, -4) equals local pos (-1, 1, 5)
@@ -282,7 +272,7 @@ public class ViewMode extends AppCompatActivity implements AdapterView.OnItemSel
 
     //add the ID of a just-resolved anchor to the locally-stored set and update current doormats
     private void addToFoundAnchors(String resolvedAnchorID) {
-
+        Log.i(TAG, "                addToFoundAnchors");
         SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
         HashSet<String> foundAnchors = new HashSet<String>(sharedPref.getStringSet("found anchors", new HashSet<String>()));
         foundAnchors.add(resolvedAnchorID);
@@ -296,20 +286,18 @@ public class ViewMode extends AppCompatActivity implements AdapterView.OnItemSel
     }
 
     //methods called by GeofenceBroadcastReceiver upon events being triggered
-    private static synchronized void newIDsToResolve(ArrayList<Geofence> triggeredGeofences) {
+    public static synchronized void newIDsToResolve(ArrayList<Geofence> triggeredGeofences) {
+        Log.i(TAG, "newIDsToResolve");
         for (Geofence g : triggeredGeofences) {
-            Log.d(TAG, "Adding triggered Geofence to idsToResolve, ID: " + g.getRequestId());
-            idsToResolve.add(g.getRequestId());
+            if (!idsToResolve.contains(g.getRequestId())) {
+                Log.d(TAG, "Adding triggered Geofence to idsToResolve, ID: " + g.getRequestId());
+                idsToResolve.add(g.getRequestId());
+            }
         }
     }
 
-    //methods called by GeofenceBroadcastReceiver upon events being triggered
-    public static synchronized void newIDToResolve(ArrayList<UserData.ChildNode> newChildNodes) {
-        idsToResolve.add(newChildNodes.get(0).getAnchor_id());
-        childrenWaiting.addAll(newChildNodes);
-    }
-
     public static synchronized void newIDsToRemove(ArrayList<Geofence> triggeredGeofences) {
+        Log.i(TAG, "newIDsToRemove");
         for (Geofence g : triggeredGeofences) {
             idsToRemove.add(g.getRequestId());
         }

@@ -55,10 +55,11 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 //should only lose its state if the application ends unexpectedly
-public class LocationApplication extends Application implements Application.ActivityLifecycleCallbacks, DoormatManager.VolleyCallback {
+public class LocationApplication extends Application implements Application.ActivityLifecycleCallbacks, AnchorRetrieval.VolleyCallback {
 
     private static final String TAG = "LocationApplication";
 
@@ -88,7 +89,7 @@ public class LocationApplication extends Application implements Application.Acti
     /********************** Location variables ************************/
 
     public FusedLocationProviderClient locationClient;
-    public HashSet<Circle> circles = new HashSet<Circle>();
+    public static final HashMap<String, Circle> CIRCLE_MAP = new HashMap<String, Circle>();
 
     private static Location mLastLocation = null;
     private static Location locationOfSearch = null;
@@ -108,9 +109,9 @@ public class LocationApplication extends Application implements Application.Acti
 
     /*************** Database stuff, otherwise known as 'merciless torment' ****************/
 
-    DoormatManager doormatManager = new DoormatManager();
-    private static final HashSet<UserData.Doormat> doormatSet = new HashSet<UserData.Doormat>();
-    private static final HashMap<String, UserData.Doormat> doormatMap = new HashMap<String, UserData.Doormat>();
+    AnchorRetrieval anchorRetrieval = new AnchorRetrieval();
+    private static final HashMap<String, AnchorResult.DatabaseAnchor> DATABASE_ANCHOR_MAP = new HashMap<String, AnchorResult.DatabaseAnchor>();
+    private static final HashSet<ChildResult.DatabaseChildNode> DATABASE_CHILD_NODE_SET = new HashSet<>();
 
     /************************************ App lifecycle ************************************/
 
@@ -160,6 +161,7 @@ public class LocationApplication extends Application implements Application.Acti
         foregroundActivities.add(activity.getClass().getSimpleName());
         currentActivity = new WeakReference<Activity>(activity);
         determineForegroundStatus();
+        manageLocationUpdates();
     }
 
     @Override
@@ -188,8 +190,8 @@ public class LocationApplication extends Application implements Application.Acti
             @Override
             public void run() {
                 Log.i(TAG, "foregroundActivities.size() = " + String.valueOf(foregroundActivities.size()));
-//                if(!appIsInBackground.get() && currentActivityReference == null) {
-                if(!appIsInBackground.get() && foregroundActivities.size() == 0) {
+                manageLocationUpdates();
+                if (!appIsInBackground.get() && foregroundActivities.size() == 0) {
                     Log.i(TAG, "IN BACKGROUND");
                     appIsInBackground.set(true);
                     currentActivity = null;
@@ -200,11 +202,11 @@ public class LocationApplication extends Application implements Application.Acti
         }, WAIT_INTERVAL);
     }
     private void determineForegroundStatus() {
+        manageLocationUpdates();
         if (appIsInBackground.get()) {
             Log.i(TAG, "IN FOREGROUND (" + foregroundActivities.get(foregroundActivities.size() - 1) + ")");
             appIsInBackground.set(false);
             desiredLocationRequest = FOREGROUND_LOCATIONREQUEST;
-            manageLocationUpdates();
         }
     }
 
@@ -212,11 +214,8 @@ public class LocationApplication extends Application implements Application.Acti
         return currentActivity;
     }
 
-    public static HashSet<UserData.Doormat> getCurrentDoormatSet() {
-        return doormatSet;
-    }
-    public static HashMap<String, UserData.Doormat> getCurrentDoormatMap() {
-        return doormatMap;
+    public static HashMap<String, AnchorResult.DatabaseAnchor> getCurrentDoormatMap() {
+        return DATABASE_ANCHOR_MAP;
     }
 
     public static HashMap<String, Geofence> getEnteredGeofences() {
@@ -239,6 +238,21 @@ public class LocationApplication extends Application implements Application.Acti
         }
     }
 
+    public static HashSet<ChildResult.DatabaseChildNode> getNearbyChildNodes() {
+        return DATABASE_CHILD_NODE_SET;
+    }
+
+    public static void addNearbyChildNodes(ArrayList<ChildResult.DatabaseChildNode> newChildNodes) {
+        DATABASE_CHILD_NODE_SET.addAll(newChildNodes);
+    }
+
+    public static void removeNearbyChildNodes(ArrayList<Geofence> geofenceList) {
+        for (Geofence g : geofenceList) {
+            DATABASE_CHILD_NODE_SET.removeIf(cn -> cn.getAnchor_id().equals(g.getRequestId()));
+        }
+
+    }
+
     public static AtomicBoolean getAppIsInBackground() {
         return appIsInBackground;
     }
@@ -258,12 +272,16 @@ public class LocationApplication extends Application implements Application.Acti
 
         if ((fine || coarse) && !(appIsInBackground.get() && !background)) {
             if ((locationUpdatesActive) && (activeLocationRequest != desiredLocationRequest)) {
-                task = locationClient.removeLocationUpdates(mLocationCallback);
-                locationUpdatesActive = !task.isSuccessful();
+                locationClient.removeLocationUpdates(mLocationCallback);
+                task = locationClient.requestLocationUpdates(desiredLocationRequest, mLocationCallback, Looper.myLooper());
+                locationUpdatesActive = task.isSuccessful();
+                activeLocationRequest = desiredLocationRequest;
             }
-            task = locationClient.requestLocationUpdates(desiredLocationRequest, mLocationCallback, Looper.myLooper());
-            locationUpdatesActive = task.isSuccessful();
-            activeLocationRequest = desiredLocationRequest;
+            else if (!locationUpdatesActive) {
+                task = locationClient.requestLocationUpdates(desiredLocationRequest, mLocationCallback, Looper.myLooper());
+                locationUpdatesActive = task.isSuccessful();
+                activeLocationRequest = desiredLocationRequest;
+            }
             if ((map != null) && !map.isMyLocationEnabled()) {
                 map.setMyLocationEnabled(true);
             }
@@ -390,10 +408,6 @@ public class LocationApplication extends Application implements Application.Acti
             else if ((MapActivity.getMap() != null) && foregroundActivities.contains("MapActivity")) {
                     updateCirclesVisibility(MapActivity.getMap());
             }
-
-            //
-
-            manageLocationUpdates();
         }
     };
 
@@ -462,44 +476,46 @@ public class LocationApplication extends Application implements Application.Acti
         double lng = mLastLocation.getLongitude();
 
         //execute a function that gets anchors within SEARCH_RADIUS from database
-        doormatManager.setVolleyCallback(this);
-        doormatManager.getDoormats(this, lat, lng, SEARCH_RADIUS);
+        anchorRetrieval.setVolleyCallback(this);
+        anchorRetrieval.getAnchors(this, lat, lng, SEARCH_RADIUS);
 
     }
 
     @Override
     public void onSuccessResponse(String result) throws JSONException {
         Log.i(TAG, "onSuccessResponse");
-//        Toast.makeText(this, result, Toast.LENGTH_LONG).show();
+        JSONObject obj = new JSONObject(result);
 
         locationOfSearch = mLastLocation;
 
-        JSONObject obj = new JSONObject(result);
-        UserData user_data = (UserData) new Gson().fromJson(obj.toString(), UserData.class);
+        AnchorResult anchorResult = (AnchorResult) new Gson().fromJson(obj.toString(), AnchorResult.class);
+        HashSet<AnchorResult.DatabaseAnchor> newAnchors = anchorResult.getData();
 
-        //set prevSearchDoormats as copy of doormats before doormats updated with getData()
-        HashSet<UserData.Doormat> prevSearchDoormats = new HashSet<UserData.Doormat>(doormatSet);
-
-        doormatSet.clear();
-        doormatSet.addAll(user_data.getData());
-
-        doormatMap.clear();
-        for (UserData.Doormat d : doormatSet) {
-            doormatMap.put(d.getAnchor_id(), d);
+        ArrayList<String> oldIds = new ArrayList<String>();
+        ArrayList<String> newIds = new ArrayList<String>();
+        for (String id : DATABASE_ANCHOR_MAP.keySet()) {
+            if (!newAnchors.contains(id)) {
+                oldIds.add(id);
+                DATABASE_ANCHOR_MAP.remove(id);
+            }
+        }
+        for (AnchorResult.DatabaseAnchor d : anchorResult.getData()) {
+            if (DATABASE_ANCHOR_MAP.get(d.getAnchor_id()) == null) {
+                newIds.add(d.getAnchor_id());
+                DATABASE_ANCHOR_MAP.put(d.getAnchor_id(), d);
+            }
         }
 
         updateDoormatsFound();
 
-        HashSet<UserData.Doormat> newDoormats = getNewDoormats(prevSearchDoormats);
-        HashSet<UserData.Doormat> oldDoormats = getOldDoormats(prevSearchDoormats);
-
-        addNewGeofences(newDoormats);
-        removeOldGeofences(oldDoormats);
+        if (!newIds.isEmpty()) { addNewGeofences(newIds); }
+        if (!oldIds.isEmpty()) { geoClient.removeGeofences(oldIds); }
 
         GoogleMap map = MapActivity.getMap();
         if (map != null) {
-            updateCircles(map, prevSearchDoormats);
+            updateCircles(map);
         }
+
 
     }
 
@@ -507,47 +523,23 @@ public class LocationApplication extends Application implements Application.Acti
         //set doormats' found field based on locally-stored set
         SharedPreferences sharedPref = androidx.preference.PreferenceManager.getDefaultSharedPreferences(this);
         HashSet<String> foundAnchors = new HashSet<String>(sharedPref.getStringSet("found anchors", new HashSet<String>()));
-        for (UserData.Doormat d : doormatSet) {
+        for (AnchorResult.DatabaseAnchor d : DATABASE_ANCHOR_MAP.values()) {
             if (foundAnchors.contains(d.getAnchor_id())) {
                 d.setFound(true);
-            }
-        }
-
-        //update circles' tags' found fields.
-        //this can be removed if we can confirm circles tags are references to objects and not copies.
-        GoogleMap map = MapActivity.getMap();
-        if (map != null) {
-            for (Circle c : circles) {
-                UserData.Doormat d = (UserData.Doormat) c.getTag();
-                assert d != null;
-                if (foundAnchors.contains(d.getAnchor_id())) {
-                    d.setFound(true);
-                }
             }
         }
     }
 
     public static void updateDoormatFound(String resolvedAnchorID) {
         //set doormats' found field based on locally-stored set
-        for (UserData.Doormat d : doormatSet) {
-            if (d.getAnchor_id().equals(resolvedAnchorID)) {
-                d.setFound(true);
-            }
+        if (DATABASE_ANCHOR_MAP.containsKey(resolvedAnchorID) && DATABASE_ANCHOR_MAP.get(resolvedAnchorID) != null) {
+            AnchorResult.DatabaseAnchor da = DATABASE_ANCHOR_MAP.get(resolvedAnchorID);
+            assert da != null;
+            da.setFound(true);
         }
     }
 
-    private HashSet<UserData.Doormat> getNewDoormats(HashSet<UserData.Doormat> prevSearchDoormats) {
-        HashSet<UserData.Doormat> newDoormats = new HashSet<UserData.Doormat>(doormatSet);
-        newDoormats.removeAll(prevSearchDoormats);
-        return newDoormats;
-    }
-    private HashSet<UserData.Doormat> getOldDoormats(HashSet<UserData.Doormat> prevSearchDoormats) {
-        HashSet<UserData.Doormat> oldDoormats = new HashSet<UserData.Doormat>(prevSearchDoormats);
-        oldDoormats.removeAll(doormatSet);
-        return oldDoormats;
-    }
-
-    private void addNewGeofences(HashSet<UserData.Doormat> newDoormats) {
+    private void addNewGeofences(ArrayList<String> newIds) {
         Log.i(TAG, "addNewGeofences");
 
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
@@ -557,82 +549,55 @@ public class LocationApplication extends Application implements Application.Acti
 
         List<Geofence> geofenceList = new ArrayList<Geofence>();
 
-        if (!newDoormats.isEmpty()) {
-            for (UserData.Doormat d : newDoormats) {
-                geofenceList.add(geoHelper.getGeofence(String.valueOf(d.getAnchor_id()), new LatLng(d.getLatitude(), d.getLongitude()), GEOFENCE_RADIUS,
-                        Geofence.GEOFENCE_TRANSITION_ENTER | Geofence.GEOFENCE_TRANSITION_DWELL | Geofence.GEOFENCE_TRANSITION_EXIT));
-            }
-            GeofencingRequest geofencingRequest = geoHelper.getGeofencingRequest(geofenceList);
-            PendingIntent pendingIntent = geoHelper.getPendingIntent();
-
-            geoClient.addGeofences(geofencingRequest, pendingIntent)
-                    .addOnSuccessListener(new OnSuccessListener<Void>() {
-                        @Override
-                        public void onSuccess(Void unused) {
-                            Log.d(TAG, "onSuccess: Geofence(s) added");
-                        }
-                    })
-                    .addOnFailureListener(new OnFailureListener() {
-                        @Override
-                        public void onFailure(@NonNull Exception e) {
-                            String errorMessage = geoHelper.getErrorString(e);
-                            Log.d(TAG, "onFailure: " + errorMessage);
-                        }
-                    });
+        for (String id : newIds) {
+            AnchorResult.DatabaseAnchor d = DATABASE_ANCHOR_MAP.get(id);
+            assert d != null;
+            geofenceList.add(geoHelper.getGeofence(String.valueOf(id), new LatLng(d.getLatitude(), d.getLongitude()), GEOFENCE_RADIUS,
+                    Geofence.GEOFENCE_TRANSITION_ENTER | Geofence.GEOFENCE_TRANSITION_DWELL | Geofence.GEOFENCE_TRANSITION_EXIT));
         }
-    }
+        GeofencingRequest geofencingRequest = geoHelper.getGeofencingRequest(geofenceList);
+        PendingIntent pendingIntent = geoHelper.getPendingIntent();
 
-    private void removeOldGeofences(HashSet<UserData.Doormat> oldDoormats) {
-        Log.i(TAG, "removeOldGeofences");
-        List<String> requestIds = new ArrayList<String>();
-
-        if (!oldDoormats.isEmpty()) {
-            for (UserData.Doormat d : oldDoormats) {
-                requestIds.add(String.valueOf(d.getAnchor_id()));
-            }
-        }
-        geoClient.removeGeofences(requestIds);
-
+        geoClient.addGeofences(geofencingRequest, pendingIntent)
+                .addOnSuccessListener(new OnSuccessListener<Void>() {
+                    @Override
+                    public void onSuccess(Void unused) {
+                        Log.d(TAG, "onSuccess: Geofence(s) added");
+                    }
+                })
+                .addOnFailureListener(new OnFailureListener() {
+                    @Override
+                    public void onFailure(@NonNull Exception e) {
+                        String errorMessage = geoHelper.getErrorString(e);
+                        Log.d(TAG, "onFailure: " + errorMessage);
+                    }
+                });
     }
 
     //when updating circles immediately upon map creation,
     // send an empty HashSet as prevSearchDoormats to get all current doormats
-    public void updateCircles(GoogleMap map, HashSet<UserData.Doormat> prevSearchDoormats) {
+    public void updateCircles(GoogleMap map) {
         Log.i(TAG, "updateCircles");
-        boolean isInDoormats;
 
         int color;
-//        int color = Color.parseColor("red");
         int alphaStroke = 255;
         int alphaFill = 120;
 
-        HashSet<UserData.Doormat> newDoormats = getNewDoormats(prevSearchDoormats);
-
         //remove circles that are not in the most recent 'batch' of doormats and add the new ones,
         //unless newDoormats is empty.
-        if (!newDoormats.isEmpty()) {
-
-            for (Circle c : circles) {
-                isInDoormats = false;
-                for (UserData.Doormat d: doormatSet) {
-                    if ((d.getLatitude() == c.getCenter().latitude) && (d.getLongitude() == c.getCenter().longitude)) {
-                        isInDoormats = true;
-                        break;
-                    }
-                }
-                if (!isInDoormats) {
-                    c.remove();
-                    circles.remove(c);
-                }
+        for (String id : CIRCLE_MAP.keySet()) {
+            if (DATABASE_ANCHOR_MAP.get(id) == null) {
+                Objects.requireNonNull(CIRCLE_MAP.get(id)).remove();
+                CIRCLE_MAP.remove(id);
             }
-            for (UserData.Doormat d : newDoormats) {
-
+        }
+        for (String id : DATABASE_ANCHOR_MAP.keySet()) {
+            if (CIRCLE_MAP.get(id) == null) {
+                AnchorResult.DatabaseAnchor d = DATABASE_ANCHOR_MAP.get(id);
+                assert d != null;
                 //get the doormat's color; grey if already found
                 if (d.isFound()) {
                     color = Color.parseColor("lightgrey");
-                }
-                else if (d.getColor().equals("default_color")) {
-                    color = Color.parseColor("red");
                 }
                 else {
                     color = Color.parseColor(d.getColor());
@@ -646,8 +611,8 @@ public class LocationApplication extends Application implements Application.Acti
                 circleOptions.strokeWidth(3);
                 Circle c = map.addCircle(circleOptions);
                 //set doormat object as circle's tag
-                c.setTag(d);
-                circles.add(c);
+                c.setTag(id);
+                CIRCLE_MAP.put(id, c);
             }
         }
         updateCirclesVisibility(map);
@@ -656,12 +621,10 @@ public class LocationApplication extends Application implements Application.Acti
         Log.i(TAG, "updateCirclesVisibility");
         int strokeAlpha = 255;
         int fillAlpha = 120;
-        int strokeColor;
-        int fillColor;
         int color;
         //set alpha of circles lower if they're farther away,
         //and make them invisible if they're more than ON_MAP_RADIUS away from user.
-        for (Circle c : circles) {
+        for (Circle c : CIRCLE_MAP.values()) {
             double dist = distance(mLastLocation.getLatitude(), c.getCenter().latitude, mLastLocation.getLongitude(), c.getCenter().longitude);
             if (dist >= ON_MAP_RADIUS && c.isVisible()) {
                 c.setVisible(false);
@@ -669,15 +632,13 @@ public class LocationApplication extends Application implements Application.Acti
             else {
                 double ratio = (ON_MAP_RADIUS - dist) / ON_MAP_RADIUS;
 
-                //get circle's associated doormat
-                UserData.Doormat d = (UserData.Doormat) c.getTag();
+                //get circle's associated id
+                String id = (String) c.getTag();
+                AnchorResult.DatabaseAnchor d = (AnchorResult.DatabaseAnchor) DATABASE_ANCHOR_MAP.get(id);
                 assert d != null;
                 //get the doormat's color; grey if already found, red if "default_color"
                 if (d.isFound()) {
                     color = Color.parseColor("lightgrey");
-                }
-                else if (d.getColor().equals("default_color")) {
-                    color = Color.parseColor("red");
                 }
                 else {
                     color = Color.parseColor(d.getColor());

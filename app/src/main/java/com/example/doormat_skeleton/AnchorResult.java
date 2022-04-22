@@ -7,28 +7,20 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Objects;
 
-//class for doormat objects.
-//class for doormat objects.
+public class AnchorResult {
 
-public class UserData {
-
-    private HashSet<Doormat> data;
-    private ArrayList<ChildNode> childData;
+    private HashSet<DatabaseAnchor> data;
 
     //this allows us to return a HashSet of all doormats pulled from the database.
-    public HashSet<Doormat> getData() {
+    public HashSet<DatabaseAnchor> getData() {
         return data;
     }
 
-    public ArrayList<ChildNode> getChildData() {
-        return childData;
-    }
-
-    public void setData(HashSet<Doormat> data) {
+    public void setData(HashSet<DatabaseAnchor> data) {
         this.data = data;
     }
 
-    public static class Doormat implements Comparable<Doormat> {
+    public static class DatabaseAnchor implements Comparable<DatabaseAnchor> {
 
         //fields for the database table
         private String anchor_id;
@@ -114,7 +106,7 @@ public class UserData {
 
         //proximity of -1 is not a real proximity, so it goes at the end
         @Override
-        public int compareTo(Doormat d) {
+        public int compareTo(DatabaseAnchor d) {
             if (getProximity() == d.getProximity()) {
                 return 0;
             }
@@ -128,70 +120,13 @@ public class UserData {
         public boolean equals(Object o) {
             if (this == o) return true;
             if (o == null || getClass() != o.getClass()) return false;
-            Doormat doormat = (Doormat) o;
-            return getAnchor_id().equals(doormat.getAnchor_id());
+            DatabaseAnchor databaseAnchor = (DatabaseAnchor) o;
+            return getAnchor_id().equals(databaseAnchor.getAnchor_id());
         }
 
         @Override
         public int hashCode() {
             return Objects.hash(getAnchor_id());
         }
-    }
-
-    public static class ChildNode {
-
-        //fields for the database table
-        private String anchor_id;
-        private String color;
-        private String shape;
-        private float position_vx;
-        private float position_vy;
-        private float position_vz;
-        private float scale_vx;
-        private float scale_vy;
-        private float scale_vz;
-        private float rotation_qx;
-        private float rotation_qy;
-        private float rotation_qz;
-        private float rotation_qw;
-
-        //getters and setters
-
-        public String getAnchor_id() {
-            return anchor_id;
-        }
-
-        public void setAnchor_id(String doormat_id) {
-            this.anchor_id = anchor_id;
-        }
-
-        public String getShape() {
-            return shape;
-        }
-
-        public void setShape(String shape) {
-            this.shape = shape;
-        }
-
-        public String getColor() {
-            return color;
-        }
-
-        public void setColor(String color) {
-            this.color = color;
-        }
-
-        public Vector3 getPosition() {
-            return new Vector3(position_vx, position_vy, position_vz);
-        }
-
-        public Vector3 getScale() {
-            return new Vector3(scale_vx, scale_vy, scale_vz);
-        }
-
-        public Quaternion getRotation() {
-            return new Quaternion(rotation_qx, rotation_qy, rotation_qz, rotation_qw);
-        }
-
     }
 }
