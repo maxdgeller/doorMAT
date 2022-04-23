@@ -17,6 +17,8 @@ package com.example.doormat_skeleton.Helpers;
 
 import android.app.Activity;
 import android.view.WindowManager;
+
+import com.example.doormat_skeleton.BuildConfig;
 import com.google.ar.core.Camera;
 import com.google.ar.core.TrackingFailureReason;
 import com.google.ar.core.TrackingState;

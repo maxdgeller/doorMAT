@@ -8,7 +8,6 @@ import android.util.Log;
 import android.widget.Toast;
 
 import com.example.doormat_skeleton.ChildResult;
-import com.example.doormat_skeleton.AnchorRetrieval;
 import com.example.doormat_skeleton.ChildRetrieval;
 import com.example.doormat_skeleton.LocationApplication;
 import com.example.doormat_skeleton.AnchorResult;
@@ -25,6 +24,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 public class GeofenceBroadcastReceiver extends BroadcastReceiver implements ChildRetrieval.VolleyCallback {
@@ -97,9 +97,9 @@ public class GeofenceBroadcastReceiver extends BroadcastReceiver implements Chil
 
     private static String getNotifString(Location userLocation) {
         ArrayList<AnchorResult.DatabaseAnchor> enteredDatabaseAnchors = new ArrayList<AnchorResult.DatabaseAnchor>();
-        HashMap<String, AnchorResult.DatabaseAnchor> doormatMap = LocationApplication.getCurrentDoormatMap();
+        ConcurrentHashMap<String, AnchorResult.DatabaseAnchor> databaseAnchorMap = LocationApplication.getDatabaseAnchorMap();
         for (Geofence g : LocationApplication.getEnteredGeofences().values()) {
-            AnchorResult.DatabaseAnchor da = doormatMap.get(g.getRequestId());
+            AnchorResult.DatabaseAnchor da = databaseAnchorMap.get(g.getRequestId());
             if (da != null && !da.isFound()) {
                 da.setProximity(LocationApplication.distance(
                         userLocation.getLatitude(), da.getLatitude(),

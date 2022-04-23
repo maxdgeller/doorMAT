@@ -1,11 +1,10 @@
 package com.example.doormat_skeleton;
 
 
-import static android.content.ContentValues.TAG;
-
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.preference.PreferenceManager;
 
+import android.content.Intent;
 import android.content.SharedPreferences;
 
 import android.location.Location;
@@ -50,6 +49,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Queue;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class ViewMode extends AppCompatActivity implements AdapterView.OnItemSelectedListener {
 
@@ -64,7 +64,7 @@ public class ViewMode extends AppCompatActivity implements AdapterView.OnItemSel
     private static final Anchor.CloudAnchorState SUCCESS = Anchor.CloudAnchorState.SUCCESS;
 
     /***** Data from outside ViewMode *****/
-    HashMap<String, AnchorResult.DatabaseAnchor> doormatMap = LocationApplication.getCurrentDoormatMap();
+    ConcurrentHashMap<String, AnchorResult.DatabaseAnchor> databaseAnchorMap = LocationApplication.getDatabaseAnchorMap();
 
     /** Queue of IDs of Anchors that need to be resolved. ******/
     private static final Queue<String> idsToResolve = new LinkedList<String>();
@@ -314,7 +314,9 @@ public class ViewMode extends AppCompatActivity implements AdapterView.OnItemSel
         }
     }
 
-    public void onClickBack(View view) { finish(); }
+    public void onClickBack(View view) {
+        this.onBackPressed();
+    }
 
     public void onClickRemove(View view) {
         TransformableNode tNode = (TransformableNode) arFragment.getTransformationSystem().getSelectedNode();

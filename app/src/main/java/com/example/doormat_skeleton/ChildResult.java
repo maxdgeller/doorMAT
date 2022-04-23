@@ -4,6 +4,7 @@ import com.google.ar.sceneform.math.Quaternion;
 import com.google.ar.sceneform.math.Vector3;
 
 import java.util.ArrayList;
+import java.util.Locale;
 
 public class ChildResult {
 
@@ -88,5 +89,23 @@ public class ChildResult {
 
         }
 
+//        @Override
+//        public String toString() {
+//            return "DatabaseChildNode{" +
+//                    "anchor_id='" + anchor_id + '\'' +
+//                    ", color='" + color + '\'' +
+//                    ", shape='" + shape + '\'' +
+//                    ", position=(" + String.format(Locale.US, "%.2f", position_vx) + ", "
+//                    ", position_vy=" + position_vy +
+//                    ", position_vz=" + position_vz +
+//                    ", scale_vx=" + scale_vx +
+//                    ", scale_vy=" + scale_vy +
+//                    ", scale_vz=" + scale_vz +
+//                    ", rotation_qx=" + rotation_qx +
+//                    ", rotation_qy=" + rotation_qy +
+//                    ", rotation_qz=" + rotation_qz +
+//                    ", rotation_qw=" + rotation_qw +
+//                    '}';
+//        }
     }
 }

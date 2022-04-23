@@ -72,9 +72,8 @@ public class MapActivity extends DrawerBaseActivity implements OnMapReadyCallbac
         Log.i("Map Activity", "onMapReady");
         mGoogleMap = googleMap;
 
-        locationApplication = (LocationApplication) getApplication();
         loadCameraLocation();
-        locationApplication.updateCircles(googleMap);
+        LocationApplication.updateCircles(googleMap);
 
         if ((!googleMap.isMyLocationEnabled()) && (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED)) {
             googleMap.setMyLocationEnabled(true);
@@ -130,7 +129,7 @@ public class MapActivity extends DrawerBaseActivity implements OnMapReadyCallbac
             double latitude;
             float zoom = sharedPref.getFloat("camera zoom", DEFAULT_ZOOM);
 
-            Location location = locationApplication.getLastLocation();
+            Location location = LocationApplication.getLastLocation();
             if (location != null) {
                 longitude = location.getLongitude();
                 latitude = location.getLatitude();
@@ -154,12 +153,12 @@ public class MapActivity extends DrawerBaseActivity implements OnMapReadyCallbac
 //        double longitude = sharedPref.getFloat("longitude", DEFAULT_LONGITUDE);
 //        double latitude = sharedPref.getFloat("latitude", DEFAULT_LATITUDE);
 
-        Location location = locationApplication.getLastLocation();
+//        Location location = LocationApplication.getLastLocation();
 
-        LatLng latLng = new LatLng(location.getLatitude(), location.getLongitude());
-        Intent i = new Intent(MapActivity.this, ViewMode.class);
-        i.putExtra("LatLng", latLng);
-        startActivityForResult(i, VIEW_MODE_REQUEST_CODE);
+//        LatLng latLng = new LatLng(location.getLatitude(), location.getLongitude());
+        Intent intent = new Intent(MapActivity.this, ViewMode.class);
+        startActivity(intent);
+//        startActivityForResult(i, VIEW_MODE_REQUEST_CODE);
     }
 
     public void centerOnUserOnClick(View view) {
@@ -167,7 +166,7 @@ public class MapActivity extends DrawerBaseActivity implements OnMapReadyCallbac
     }
 
     public void centerOnUser() {
-        Location location = locationApplication.getLastLocation();
+        Location location = LocationApplication.getLastLocation();
         if ((location != null) && (mGoogleMap != null)) {
             double longitude = location.getLongitude();
             double latitude = location.getLatitude();

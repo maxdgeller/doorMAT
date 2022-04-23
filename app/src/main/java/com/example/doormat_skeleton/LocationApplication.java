@@ -20,6 +20,7 @@ import android.os.Looper;
 import android.os.SystemClock;
 import android.provider.Settings;
 import android.util.Log;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -27,6 +28,7 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
+import com.example.doormat_skeleton.Helpers.DebugHelper;
 import com.example.doormat_skeleton.Helpers.GeofenceHelper;
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.Geofence;
@@ -56,6 +58,8 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 //should only lose its state if the application ends unexpectedly
@@ -75,7 +79,7 @@ public class LocationApplication extends Application implements Application.Acti
     private final static int GRANTED = PackageManager.PERMISSION_GRANTED;
 
     public final static float SEARCH_RADIUS = 1000; //radius around user from which to get nearby cloud anchors' coordinates from database
-    private final float ON_MAP_RADIUS = 750; //radius around user in which nearby cloud anchors and their geofences will be marked on the map
+    private final static float ON_MAP_RADIUS = 750; //radius around user in which nearby cloud anchors and their geofences will be marked on the map
 
     private final static LocationRequest FOREGROUND_LOCATIONREQUEST = LocationRequest.create()
             .setInterval(5500)
@@ -99,7 +103,7 @@ public class LocationApplication extends Application implements Application.Acti
 
     /********************************* geofence constants **********************************/
 
-    private final float GEOFENCE_RADIUS = 200; //radius around anchor within which a notification is triggered
+    private static final float GEOFENCE_RADIUS = 200; //radius around anchor within which a notification is triggered
 
     /********************************* geofence variables **********************************/
 
@@ -110,7 +114,7 @@ public class LocationApplication extends Application implements Application.Acti
     /*************** Database stuff, otherwise known as 'merciless torment' ****************/
 
     AnchorRetrieval anchorRetrieval = new AnchorRetrieval();
-    private static final HashMap<String, AnchorResult.DatabaseAnchor> DATABASE_ANCHOR_MAP = new HashMap<String, AnchorResult.DatabaseAnchor>();
+    private static final ConcurrentHashMap<String, AnchorResult.DatabaseAnchor> DATABASE_ANCHOR_MAP = new ConcurrentHashMap<String, AnchorResult.DatabaseAnchor>();
     private static final HashSet<ChildResult.DatabaseChildNode> DATABASE_CHILD_NODE_SET = new HashSet<>();
 
     /************************************ App lifecycle ************************************/
@@ -130,8 +134,12 @@ public class LocationApplication extends Application implements Application.Acti
     public void onCreate() {
         super.onCreate();
         Log.i(TAG, "onCreate");
-
         sContext = getApplicationContext();
+        new DebugHelper();
+
+        if (BuildConfig.DEBUG) {
+            DebugHelper debugHelper = new DebugHelper();
+        }
 
         registerActivityLifecycleCallbacks(this);
 
@@ -143,6 +151,11 @@ public class LocationApplication extends Application implements Application.Acti
 
     public static Context getContext() {
         return sContext;
+    }
+
+    @Override
+    public void onTerminate() {
+        super.onTerminate();
     }
 
     //the following methods are called when lifecycle methods of other activities are called
@@ -214,7 +227,7 @@ public class LocationApplication extends Application implements Application.Acti
         return currentActivity;
     }
 
-    public static HashMap<String, AnchorResult.DatabaseAnchor> getCurrentDoormatMap() {
+    public static ConcurrentHashMap<String, AnchorResult.DatabaseAnchor> getDatabaseAnchorMap() {
         return DATABASE_ANCHOR_MAP;
     }
 
@@ -502,8 +515,8 @@ public class LocationApplication extends Application implements Application.Acti
         for (AnchorResult.DatabaseAnchor d : anchorResult.getData()) {
             if (DATABASE_ANCHOR_MAP.get(d.getAnchor_id()) == null) {
                 newIds.add(d.getAnchor_id());
-                DATABASE_ANCHOR_MAP.put(d.getAnchor_id(), d);
             }
+            DATABASE_ANCHOR_MAP.putIfAbsent(d.getAnchor_id(), d);
         }
 
         updateDoormatsFound();
@@ -523,16 +536,16 @@ public class LocationApplication extends Application implements Application.Acti
         //set doormats' found field based on locally-stored set
         SharedPreferences sharedPref = androidx.preference.PreferenceManager.getDefaultSharedPreferences(this);
         HashSet<String> foundAnchors = new HashSet<String>(sharedPref.getStringSet("found anchors", new HashSet<String>()));
-        for (AnchorResult.DatabaseAnchor d : DATABASE_ANCHOR_MAP.values()) {
-            if (foundAnchors.contains(d.getAnchor_id())) {
-                d.setFound(true);
+        for (String id : DATABASE_ANCHOR_MAP.keySet()) {
+            if (foundAnchors.contains(id)) {
+                Objects.requireNonNull(DATABASE_ANCHOR_MAP.get(id)).setFound(true);
             }
         }
     }
 
     public static void updateDoormatFound(String resolvedAnchorID) {
         //set doormats' found field based on locally-stored set
-        if (DATABASE_ANCHOR_MAP.containsKey(resolvedAnchorID) && DATABASE_ANCHOR_MAP.get(resolvedAnchorID) != null) {
+        if (DATABASE_ANCHOR_MAP.get(resolvedAnchorID) != null) {
             AnchorResult.DatabaseAnchor da = DATABASE_ANCHOR_MAP.get(resolvedAnchorID);
             assert da != null;
             da.setFound(true);
@@ -576,7 +589,7 @@ public class LocationApplication extends Application implements Application.Acti
 
     //when updating circles immediately upon map creation,
     // send an empty HashSet as prevSearchDoormats to get all current doormats
-    public void updateCircles(GoogleMap map) {
+    public static void updateCircles(GoogleMap map) {
         Log.i(TAG, "updateCircles");
 
         int color;
@@ -617,7 +630,7 @@ public class LocationApplication extends Application implements Application.Acti
         }
         updateCirclesVisibility(map);
     }
-    public void updateCirclesVisibility(GoogleMap map) {
+    public static void updateCirclesVisibility(GoogleMap map) {
         Log.i(TAG, "updateCirclesVisibility");
         int strokeAlpha = 255;
         int fillAlpha = 120;
