@@ -135,7 +135,6 @@ public class LocationApplication extends Application implements Application.Acti
         super.onCreate();
         Log.i(TAG, "onCreate");
         sContext = getApplicationContext();
-        new DebugHelper();
 
         if (BuildConfig.DEBUG) {
             DebugHelper debugHelper = new DebugHelper();
@@ -153,24 +152,21 @@ public class LocationApplication extends Application implements Application.Acti
         return sContext;
     }
 
-    @Override
-    public void onTerminate() {
-        super.onTerminate();
-    }
-
     //the following methods are called when lifecycle methods of other activities are called
     @Override
     public void onActivityCreated(@NonNull Activity activity, @Nullable Bundle bundle) {
-
+        Log.d(TAG, activity.getClass().getSimpleName() + " created");
     }
 
     @Override
     public void onActivityStarted(@NonNull Activity activity) {
-
+        Log.d(TAG, activity.getClass().getSimpleName() + " started");
     }
 
     @Override
     public void onActivityResumed(@NonNull Activity activity) {
+        Log.d(TAG, activity.getClass().getSimpleName() + " resumed");
+
         foregroundActivities.add(activity.getClass().getSimpleName());
         currentActivity = new WeakReference<Activity>(activity);
         determineForegroundStatus();
@@ -179,23 +175,25 @@ public class LocationApplication extends Application implements Application.Acti
 
     @Override
     public void onActivityPaused(@NonNull Activity activity) {
+        Log.d(TAG, activity.getClass().getSimpleName() + " paused");
+
         foregroundActivities.remove(activity.getClass().getSimpleName());
         determineBackgroundStatus();
     }
 
     @Override
     public void onActivityStopped(@NonNull Activity activity) {
-
+        Log.d(TAG, activity.getClass().getSimpleName() + " stopped");
     }
 
     @Override
     public void onActivitySaveInstanceState(@NonNull Activity activity, @NonNull Bundle bundle) {
-
+        Log.d(TAG, activity.getClass().getSimpleName() + " onActivitySaveInstanceState");
     }
 
     @Override
     public void onActivityDestroyed(@NonNull Activity activity) {
-        Log.i(TAG, String.valueOf("onActivityDestroyed"));
+        Log.d(TAG, activity.getClass().getSimpleName() + " destroyed");
     }
 
     private void determineBackgroundStatus() {
@@ -523,7 +521,6 @@ public class LocationApplication extends Application implements Application.Acti
 
         if (!newIds.isEmpty()) { addNewGeofences(newIds); }
         if (!oldIds.isEmpty()) { geoClient.removeGeofences(oldIds); }
-
         GoogleMap map = MapActivity.getMap();
         if (map != null) {
             updateCircles(map);
@@ -561,21 +558,21 @@ public class LocationApplication extends Application implements Application.Acti
         }
 
         List<Geofence> geofenceList = new ArrayList<Geofence>();
-
         for (String id : newIds) {
             AnchorResult.DatabaseAnchor d = DATABASE_ANCHOR_MAP.get(id);
             assert d != null;
-            geofenceList.add(geoHelper.getGeofence(String.valueOf(id), new LatLng(d.getLatitude(), d.getLongitude()), GEOFENCE_RADIUS,
+            geofenceList.add(GeofenceHelper.getGeofence(id, new LatLng(d.getLatitude(), d.getLongitude()), GEOFENCE_RADIUS,
                     Geofence.GEOFENCE_TRANSITION_ENTER | Geofence.GEOFENCE_TRANSITION_DWELL | Geofence.GEOFENCE_TRANSITION_EXIT));
         }
-        GeofencingRequest geofencingRequest = geoHelper.getGeofencingRequest(geofenceList);
+        GeofencingRequest geofencingRequest = GeofenceHelper.getGeofencingRequest(geofenceList);
         PendingIntent pendingIntent = geoHelper.getPendingIntent();
 
         geoClient.addGeofences(geofencingRequest, pendingIntent)
                 .addOnSuccessListener(new OnSuccessListener<Void>() {
                     @Override
                     public void onSuccess(Void unused) {
-                        Log.d(TAG, "onSuccess: Geofence(s) added");
+//                        Toast.makeText(sContext, "onSuccess: " + newIds.size() + " Geofence(s) added, location:\n" + mLastLocation.getLatitude() + ", " + mLastLocation.getLongitude(), Toast.LENGTH_LONG).show();
+                        Log.d(TAG, "onSuccess: " + newIds.size() + " Geofence(s) added");
                     }
                 })
                 .addOnFailureListener(new OnFailureListener() {

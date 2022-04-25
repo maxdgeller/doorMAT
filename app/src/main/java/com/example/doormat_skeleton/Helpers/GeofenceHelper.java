@@ -22,21 +22,14 @@ public class GeofenceHelper extends ContextWrapper {
         super(base);
     }
 
-    public GeofencingRequest getGeofencingRequest(Geofence geofence) {
-        return new GeofencingRequest.Builder()
-                .addGeofence(geofence)
-                .setInitialTrigger(GeofencingRequest.INITIAL_TRIGGER_ENTER)
-                .build();
-    }
-
-    public GeofencingRequest getGeofencingRequest(List<Geofence> geofenceList) {
+    public static GeofencingRequest getGeofencingRequest(List<Geofence> geofenceList) {
         return new GeofencingRequest.Builder()
                 .addGeofences(geofenceList)
                 .setInitialTrigger(GeofencingRequest.INITIAL_TRIGGER_ENTER)
                 .build();
     }
 
-    public Geofence getGeofence(String ID, LatLng latLng, float radius, int transitionTypes) {
+    public static Geofence getGeofence(String ID, LatLng latLng, float radius, int transitionTypes) {
         return new Geofence.Builder()
                 .setCircularRegion(latLng.latitude, latLng.longitude, radius)
                 .setRequestId(ID)

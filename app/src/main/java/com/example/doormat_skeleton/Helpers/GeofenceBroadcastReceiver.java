@@ -1,5 +1,6 @@
 package com.example.doormat_skeleton.Helpers;
 
+import android.app.Activity;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -56,7 +57,6 @@ public class GeofenceBroadcastReceiver extends BroadcastReceiver implements Chil
             case Geofence.GEOFENCE_TRANSITION_ENTER:
                 Toast.makeText(context, "GEOFENCE_TRANSITION_ENTER", Toast.LENGTH_SHORT).show();
                 Log.d(TAG, "geofenceList: " + geofenceList);
-
                 //update entered geofences list
                 LocationApplication.addEnteredGeofences(new ArrayList<Geofence>(geofenceList));
                 ViewMode.newIDsToResolve(new ArrayList<Geofence>(geofenceList));
@@ -77,7 +77,7 @@ public class GeofenceBroadcastReceiver extends BroadcastReceiver implements Chil
 
                 break;
             case Geofence.GEOFENCE_TRANSITION_DWELL:
-//                Toast.makeText(context, "GEOFENCE_TRANSITION_DWELL", Toast.LENGTH_SHORT).show();
+                Toast.makeText(context, "GEOFENCE_TRANSITION_DWELL", Toast.LENGTH_SHORT).show();
                 break;
             case Geofence.GEOFENCE_TRANSITION_EXIT:
                 Toast.makeText(context, "GEOFENCE_TRANSITION_EXIT", Toast.LENGTH_SHORT).show();

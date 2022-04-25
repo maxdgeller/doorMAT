@@ -23,10 +23,19 @@ import android.widget.Toast;
 import com.google.android.gms.location.Geofence;
 import com.google.ar.core.Anchor;
 
+import com.google.ar.core.ArCoreApk;
+import com.google.ar.core.Config;
 import com.google.ar.core.HitResult;
 import com.google.ar.core.Plane;
 
+import com.google.ar.core.Pose;
 import com.google.ar.core.Session;
+import com.google.ar.core.exceptions.CameraNotAvailableException;
+import com.google.ar.core.exceptions.UnavailableApkTooOldException;
+import com.google.ar.core.exceptions.UnavailableArcoreNotInstalledException;
+import com.google.ar.core.exceptions.UnavailableDeviceNotCompatibleException;
+import com.google.ar.core.exceptions.UnavailableSdkTooOldException;
+import com.google.ar.core.exceptions.UnavailableUserDeclinedInstallationException;
 import com.google.ar.sceneform.Node;
 import com.google.ar.sceneform.math.Quaternion;
 import com.google.ar.sceneform.rendering.Material;
@@ -40,11 +49,15 @@ import com.google.ar.sceneform.rendering.MaterialFactory;
 import com.google.ar.sceneform.rendering.ShapeFactory;
 import com.google.ar.sceneform.rendering.ModelRenderable;
 import com.google.ar.sceneform.ux.TransformableNode;
+import com.google.ar.schemas.lull.Quat;
 
+import java.lang.reflect.Array;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Queue;
@@ -119,13 +132,17 @@ public class ViewMode extends AppCompatActivity implements AdapterView.OnItemSel
             colorMaterials.put(cStr, MaterialFactory.makeOpaqueWithColor(getApplicationContext(), color));
         }
 
-        idsToResolve.clear();
         newIDsToResolve(new ArrayList<Geofence>(LocationApplication.getEnteredGeofences().values()));
 
         arFragment = (CustomArFragment) getSupportFragmentManager().findFragmentById(R.id.ux_fragment);
         assert arFragment != null;
         arFragment.getArSceneView().getScene().addOnUpdateListener(this::onUpdateFrame);
         arFragment.setOnTapArPlaneListener(this::onTapPlane);
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
     }
 
     //call this whenever you need a ModelRenderable
@@ -158,12 +175,36 @@ public class ViewMode extends AppCompatActivity implements AdapterView.OnItemSel
 
     private synchronized void resolveNext() {
         Log.i(TAG, "        resolveNext");
-        Toast.makeText(getApplicationContext(),"attempting to resolve " + idsToResolve.peek(), Toast.LENGTH_LONG).show();
+//        Toast.makeText(getApplicationContext(),"attempting to resolve " + idsToResolve.peek(), Toast.LENGTH_LONG).show();
         //Each frame, remove a single ID from idsToResolve and add a new anchornode to resolvingAnchors
         Session session = arFragment.getArSceneView().getSession();
         assert session != null;
-        Anchor a = session.resolveCloudAnchor(idsToResolve.poll());
-        resolving.add(a);
+        ArrayList<String> idList = new ArrayList<String>();
+        for (Anchor a : session.getAllAnchors()) {
+            idList.add(a.getCloudAnchorId());
+        }
+        String id = idsToResolve.poll();
+        if (!idList.contains(id)) {
+            Anchor a = session.resolveCloudAnchor(id);
+            resolving.add(a);
+        }
+    }
+
+    //called in onCreate, and called by GeofenceBroadcastReceiver
+    public synchronized void resolveAnchors(Collection<Geofence> geofenceList) {
+        Log.i(TAG, "resolveAnchors");
+        Session session = arFragment.getArSceneView().getSession();
+        assert session != null;
+        ArrayList<String> idList = new ArrayList<String>();
+        for (Anchor a : session.getAllAnchors()) {
+            idList.add(a.getCloudAnchorId());
+        }
+        for (Geofence g : geofenceList) {
+            if (!idList.contains(g.getRequestId())) {
+                Anchor a = session.resolveCloudAnchor(g.getRequestId());
+                resolving.add(a);
+            }
+        }
     }
 
     private synchronized void checkNextResolving() {
@@ -174,7 +215,6 @@ public class ViewMode extends AppCompatActivity implements AdapterView.OnItemSel
 
         if (state == TASK_IN_PROGRESS) { resolving.add(a); } //put resolving anchor at end of queue
         else if (state == SUCCESS) {
-            showState(a, state);
             logState(a, state);
 
             AnchorNode anchorNode = new AnchorNode(a);
@@ -184,13 +224,21 @@ public class ViewMode extends AppCompatActivity implements AdapterView.OnItemSel
 
             resolved.add(anchorNode);
         }
-        else if (state.isError()) { showState(a, state); a.detach(); } //show error and detach anchor
+        else if (state.isError()) { logState(a, state); a.detach(); } //show error and detach anchor
     }
 
     private synchronized void renderNextChildren() {
         Log.i(TAG, "        renderNextChildren");
         AnchorNode anchorNode = resolved.poll();
         assert anchorNode != null;
+
+        Anchor a = anchorNode.getAnchor();
+        assert a != null;
+        Log.d(TAG, "RENDERING ANCHOR: " + a.getCloudAnchorId());
+        Log.d(TAG, a.getCloudAnchorState().toString());
+        Log.d(TAG, a.getPose().toString());
+        Log.d(TAG, a.getTrackingState().toString());
+
         HashSet<ChildResult.DatabaseChildNode> childNodes = LocationApplication.getNearbyChildNodes();
         for (ChildResult.DatabaseChildNode cn : childNodes) {
             if (cn.getAnchor_id().equals(Objects.requireNonNull(anchorNode.getAnchor()).getCloudAnchorId())) {
@@ -302,15 +350,21 @@ public class ViewMode extends AppCompatActivity implements AdapterView.OnItemSel
             idsToRemove.add(g.getRequestId());
         }
     }
+    public void onClickSphere(View view) { shapeChoice = "sphere"; updateSelectedNode("shape"); }
+    public void onClickCube(View view) { shapeChoice = "cube"; updateSelectedNode("shape"); }
+    public void onClickCylinder(View view) { shapeChoice = "cylinder"; updateSelectedNode("shape"); }
 
-    public void onClickSphere(View view) { shapeChoice = "sphere"; updateSelectedNode(); }
-    public void onClickCube(View view) { shapeChoice = "cube"; updateSelectedNode(); }
-    public void onClickCylinder(View view) { shapeChoice = "cylinder"; updateSelectedNode(); }
-
-    private void updateSelectedNode() {
+    private void updateSelectedNode(String choiceType) {
         TransformableNode tNode = (TransformableNode) arFragment.getTransformationSystem().getSelectedNode();
         if (tNode != null) {
-            tNode.setRenderable(getRenderable(colorChoice, shapeChoice));
+            String[] val = madeModelsReverse.get(tNode.getRenderable());
+            assert val != null;
+            if (choiceType.equals("shape")) {
+                tNode.setRenderable(getRenderable(val[0], shapeChoice));
+            }
+            if (choiceType.equals("color")) {
+                tNode.setRenderable(getRenderable(colorChoice, val[1]));
+            }
         }
     }
 
@@ -327,7 +381,7 @@ public class ViewMode extends AppCompatActivity implements AdapterView.OnItemSel
             tNode.setEnabled(false);
         }
         view.setVisibility(View.INVISIBLE);
-        if (rootNode != null && !rootNode.getChildren().isEmpty()) {
+        if (rootNode == null || rootNode.getChildren().isEmpty()) {
             findViewById(R.id.hostBtn).setVisibility(View.INVISIBLE);
         }
     }
@@ -360,7 +414,7 @@ public class ViewMode extends AppCompatActivity implements AdapterView.OnItemSel
         Spinner colorSpinner = findViewById(R.id.color_spinner);
         colorChoice = colorSpinner.getSelectedItem().toString();
         Log.d(TAG, "onItemSelected: color: " + colorChoice);
-        updateSelectedNode();
+        updateSelectedNode("color");
     }
 
     @Override
@@ -378,7 +432,8 @@ public class ViewMode extends AppCompatActivity implements AdapterView.OnItemSel
                 rootTNode.getTranslationController().setEnabled(false);
                 rootTNode.setParent(rootNode);
                 rootTNode.setRenderable(getRenderable(colorChoice, shapeChoice));
-
+                rootTNode.select();
+                findViewById(R.id.hostBtn).setVisibility(View.VISIBLE);
                 findViewById(R.id.clear).setVisibility(View.VISIBLE);
             }
             //if an anchor and rootNode exist, create a new transformable node
@@ -391,13 +446,14 @@ public class ViewMode extends AppCompatActivity implements AdapterView.OnItemSel
                 tNode.setParent(an);
                 tNode.setRenderable(getRenderable(colorChoice, shapeChoice));
                 tNode.select();
-                findViewById(R.id.hostBtn).setVisibility(View.VISIBLE);
                 findViewById(R.id.remove).setVisibility(View.VISIBLE);
             }
 
         }
     }
 }
-
-
+//2022-04-24 19:26:44.376 27793-27793/com.example.doormat_skeleton D/ViewMode: RESOLVING ANCHOR:
+//2022-04-24 19:26:44.376 27793-27793/com.example.doormat_skeleton D/ViewMode: TASK_IN_PROGRESS
+//2022-04-24 19:26:44.376 27793-27793/com.example.doormat_skeleton D/ViewMode: t:[x:0.000, y:0.000, z:0.000], q:[x:0.00, y:0.00, z:0.00, w:1.00]
+//2022-04-24 19:26:44.376 27793-27793/com.example.doormat_skeleton D/ViewMode: PAUSED
 

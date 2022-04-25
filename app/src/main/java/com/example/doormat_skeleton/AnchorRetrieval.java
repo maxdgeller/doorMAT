@@ -41,7 +41,10 @@ public class AnchorRetrieval {
         StringRequest request = new StringRequest(Request.Method.POST, url, new com.android.volley.Response.Listener<String>() {
             @Override
             public void onResponse(String response) {
-                if(response.contains("Data not found")){ return; }
+                if(response.contains("Data not found")){
+                    Toast.makeText(context.getApplicationContext(), "Data not found", Toast.LENGTH_SHORT).show();
+                    return;
+                }
                 try {
                     callback.onSuccessResponse(response);
                 } catch (JSONException e) {
