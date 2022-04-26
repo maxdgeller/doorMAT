@@ -11,6 +11,7 @@ import com.android.volley.RequestQueue;
 import com.android.volley.VolleyError;
 import com.android.volley.toolbox.StringRequest;
 import com.android.volley.toolbox.Volley;
+import com.example.doormat_skeleton.Helpers.DebugHelper;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -42,7 +43,7 @@ public class AnchorRetrieval {
             @Override
             public void onResponse(String response) {
                 if(response.contains("Data not found")){
-                    Toast.makeText(context.getApplicationContext(), "Data not found", Toast.LENGTH_SHORT).show();
+                    DebugHelper.showShortMessage(context.getApplicationContext(), "Data not found");
                     return;
                 }
                 try {
@@ -52,14 +53,12 @@ public class AnchorRetrieval {
                 }
                 Log.d(TAG, "onResponse: " + response);
 
-                // on below line we are displaying a success toast message.
-                Toast.makeText(context.getApplicationContext(), "Nearby anchors retrieved.", Toast.LENGTH_SHORT).show();
+                DebugHelper.showShortMessage(context.getApplicationContext(), "Nearby anchors retrieved.");
             }
         }, new com.android.volley.Response.ErrorListener() {
             @Override
             public void onErrorResponse(VolleyError error) {
-                // method to handle errors.
-                Toast.makeText(context.getApplicationContext(), "Fail to get response = " + error, Toast.LENGTH_SHORT).show();
+                DebugHelper.showShortMessage(context.getApplicationContext(), "Fail to get response = " + error);
             }
         }) {
             @Override

@@ -20,6 +20,7 @@ import android.widget.ArrayAdapter;
 import android.widget.Spinner;
 import android.widget.Toast;
 
+import com.example.doormat_skeleton.Helpers.DebugHelper;
 import com.google.android.gms.location.Geofence;
 import com.google.ar.core.Anchor;
 
@@ -175,7 +176,7 @@ public class ViewMode extends AppCompatActivity implements AdapterView.OnItemSel
 
     private synchronized void resolveNext() {
         Log.i(TAG, "        resolveNext");
-//        Toast.makeText(getApplicationContext(),"attempting to resolve " + idsToResolve.peek(), Toast.LENGTH_LONG).show();
+        DebugHelper.showShortMessage(getApplicationContext(), "attempting to resolve " + idsToResolve.peek());
         //Each frame, remove a single ID from idsToResolve and add a new anchornode to resolvingAnchors
         Session session = arFragment.getArSceneView().getSession();
         assert session != null;
@@ -311,7 +312,7 @@ public class ViewMode extends AppCompatActivity implements AdapterView.OnItemSel
     }
 
     private void showState(Anchor a, Anchor.CloudAnchorState state) {
-        Toast.makeText(getApplicationContext(),"ID: " + a.getCloudAnchorId() + "\nState: " + state.name(), Toast.LENGTH_LONG).show();
+        DebugHelper.showShortMessage(getApplicationContext(), "ID: " + a.getCloudAnchorId() + "\nState: " + state.name());
     }
 
     private void logState(Anchor a, Anchor.CloudAnchorState state) {
@@ -391,7 +392,7 @@ public class ViewMode extends AppCompatActivity implements AdapterView.OnItemSel
         Session session = arFragment.getArSceneView().getSession();
         assert session != null;
         anchorToHost = session.hostCloudAnchor(rootNode.getAnchor());
-        Toast.makeText(getApplicationContext(),"Now Hosting...", Toast.LENGTH_LONG).show();
+        Toast.makeText(getApplicationContext(),"Now Hosting...", Toast.LENGTH_SHORT).show();
     }
 
     public void onClickClear(View view) {

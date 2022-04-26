@@ -42,6 +42,8 @@ import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.model.Circle;
 import com.google.android.gms.maps.model.CircleOptions;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.Marker;
+import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.tasks.CancellationToken;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
@@ -78,8 +80,8 @@ public class LocationApplication extends Application implements Application.Acti
     private final static int LOW_PRIORITY = LocationRequest.PRIORITY_LOW_POWER;
     private final static int GRANTED = PackageManager.PERMISSION_GRANTED;
 
-    public final static float SEARCH_RADIUS = 1000; //radius around user from which to get nearby cloud anchors' coordinates from database
-    private final static float ON_MAP_RADIUS = 750; //radius around user in which nearby cloud anchors and their geofences will be marked on the map
+    public final static float SEARCH_RADIUS = 5000; //radius around user from which to get nearby cloud anchors' coordinates from database
+    private final static float ON_MAP_RADIUS = 1500; //radius around user in which nearby cloud anchors and their geofences will be marked on the map
 
     private final static LocationRequest FOREGROUND_LOCATIONREQUEST = LocationRequest.create()
             .setInterval(5500)
@@ -103,7 +105,7 @@ public class LocationApplication extends Application implements Application.Acti
 
     /********************************* geofence constants **********************************/
 
-    private static final float GEOFENCE_RADIUS = 200; //radius around anchor within which a notification is triggered
+    private static final float GEOFENCE_RADIUS = 250; //radius around anchor within which a notification is triggered
 
     /********************************* geofence variables **********************************/
 
@@ -136,9 +138,7 @@ public class LocationApplication extends Application implements Application.Acti
         Log.i(TAG, "onCreate");
         sContext = getApplicationContext();
 
-        if (BuildConfig.DEBUG) {
-            DebugHelper debugHelper = new DebugHelper();
-        }
+        DebugHelper debugHelper = new DebugHelper();
 
         registerActivityLifecycleCallbacks(this);
 
@@ -571,7 +571,7 @@ public class LocationApplication extends Application implements Application.Acti
                 .addOnSuccessListener(new OnSuccessListener<Void>() {
                     @Override
                     public void onSuccess(Void unused) {
-//                        Toast.makeText(sContext, "onSuccess: " + newIds.size() + " Geofence(s) added, location:\n" + mLastLocation.getLatitude() + ", " + mLastLocation.getLongitude(), Toast.LENGTH_LONG).show();
+                        DebugHelper.showShortMessage(getApplicationContext(), "onSuccess: " + newIds.size() + " Geofence(s) added, location:\n" + mLastLocation.getLatitude() + ", " + mLastLocation.getLongitude());
                         Log.d(TAG, "onSuccess: " + newIds.size() + " Geofence(s) added");
                     }
                 })
@@ -605,6 +605,7 @@ public class LocationApplication extends Application implements Application.Acti
             if (CIRCLE_MAP.get(id) == null) {
                 AnchorResult.DatabaseAnchor d = DATABASE_ANCHOR_MAP.get(id);
                 assert d != null;
+
                 //get the doormat's color; grey if already found
                 if (d.isFound()) {
                     color = Color.parseColor("lightgrey");
@@ -614,14 +615,31 @@ public class LocationApplication extends Application implements Application.Acti
                 }
 
                 CircleOptions circleOptions = new CircleOptions();
+
                 circleOptions.center(new LatLng(d.getLatitude(), d.getLongitude()));
                 circleOptions.radius(GEOFENCE_RADIUS);
-                circleOptions.strokeColor(Color.argb(alphaStroke, Color.red(color), Color.green(color), Color.blue(color)));
-                circleOptions.fillColor(Color.argb(alphaFill, Color.red(color), Color.green(color), Color.blue(color)));
                 circleOptions.strokeWidth(3);
                 Circle c = map.addCircle(circleOptions);
-                //set doormat object as circle's tag
-                c.setTag(id);
+                //set id or marker as circle's tag
+                if (enteredGeofences.containsKey(id)) {
+                    c.setStrokeColor(Color.argb(120, Color.red(color), Color.green(color), Color.blue(color)));
+                    c.setFillColor(Color.argb(70, Color.red(color), Color.green(color), Color.blue(color)));
+
+                    MarkerOptions markerOptions = new MarkerOptions();
+                    markerOptions.position(new LatLng(d.getLatitude(), d.getLongitude()));
+                    markerOptions.draggable(false);
+                    markerOptions.visible(true);
+                    Marker marker = map.addMarker(markerOptions);
+                    c.setTag(marker);
+                    assert marker != null;
+                    marker.setTag(id);
+                }
+                else {
+                    c.setStrokeColor(Color.argb(alphaStroke, Color.red(color), Color.green(color), Color.blue(color)));
+                    c.setFillColor(Color.argb(alphaFill, Color.red(color), Color.green(color), Color.blue(color)));
+                    c.setTag(id);
+                }
+
                 CIRCLE_MAP.put(id, c);
             }
         }
@@ -643,7 +661,16 @@ public class LocationApplication extends Application implements Application.Acti
                 double ratio = (ON_MAP_RADIUS - dist) / ON_MAP_RADIUS;
 
                 //get circle's associated id
-                String id = (String) c.getTag();
+                String id;
+                if (c.getTag() instanceof String) {
+                    id = (String) c.getTag();
+                }
+                else {
+                    Marker m = (Marker) c.getTag();
+                    assert m != null;
+                    id = (String) m.getTag();
+                }
+
                 AnchorResult.DatabaseAnchor d = (AnchorResult.DatabaseAnchor) DATABASE_ANCHOR_MAP.get(id);
                 assert d != null;
                 //get the doormat's color; grey if already found, red if "default_color"
@@ -654,8 +681,26 @@ public class LocationApplication extends Application implements Application.Acti
                     color = Color.parseColor(d.getColor());
                 }
 
-                c.setStrokeColor(Color.argb((int) (strokeAlpha * ratio), Color.red(color), Color.green(color), Color.blue(color)));
-                c.setFillColor(Color.argb((int) (fillAlpha * ratio), Color.red(color), Color.green(color), Color.blue(color)));
+                if (enteredGeofences.containsKey(id) && (c.getTag() instanceof String)) {
+                    c.setStrokeColor(Color.argb(120, Color.red(color), Color.green(color), Color.blue(color)));
+                    c.setFillColor(Color.argb(70, Color.red(color), Color.green(color), Color.blue(color)));
+
+                    MarkerOptions markerOptions = new MarkerOptions();
+                    markerOptions.position(new LatLng(d.getLatitude(), d.getLongitude()));
+                    markerOptions.draggable(false);
+                    markerOptions.visible(true);
+                    Marker marker = map.addMarker(markerOptions);
+                    c.setTag(marker);
+                }
+                else if (!enteredGeofences.containsKey(id) && !(c.getTag() instanceof String)) {
+                    Marker marker = (Marker) c.getTag();
+                    marker.remove();
+                    c.setStrokeColor(Color.argb((int) (strokeAlpha * ratio), Color.red(color), Color.green(color), Color.blue(color)));
+                    c.setFillColor(Color.argb((int) (fillAlpha * ratio), Color.red(color), Color.green(color), Color.blue(color)));
+                    c.setTag(id);
+
+                }
+
                 if (!c.isVisible()) {
                     c.setVisible(true);
                 }
