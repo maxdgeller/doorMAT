@@ -18,6 +18,7 @@ import android.widget.EditText;
 import android.widget.ProgressBar;
 import android.widget.Toast;
 
+import com.example.doormat_skeleton.Helpers.DebugHelper;
 import com.google.android.gms.location.LocationCallback;
 import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationResult;
@@ -96,12 +97,9 @@ public class MainActivity extends AppCompatActivity {
                                     if(result.equals("Login Success")){
                                         sessionManager.createSession(username);
 
-//                                        Toast.makeText(getApplicationContext(), result, Toast.LENGTH_SHORT).show();
                                         Intent intent = new Intent(getApplicationContext(), DashboardActivity.class);
                                         startActivity(intent);
                                         finish();
-                                    }else{
-//                                        Toast.makeText(getApplicationContext(), result, Toast.LENGTH_SHORT).show();
                                     }
                                     Log.i("PutData", result);
                                 }
@@ -110,7 +108,7 @@ public class MainActivity extends AppCompatActivity {
                         }
                     });
                 }else{
-                    Toast.makeText(getApplicationContext(), "All fields are required", Toast.LENGTH_SHORT).show();
+                    DebugHelper.showShortMessage(getApplicationContext(), "All fields are required");
                 }
             }
         });

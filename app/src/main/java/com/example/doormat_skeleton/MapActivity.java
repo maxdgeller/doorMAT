@@ -133,7 +133,7 @@ public class MapActivity extends DrawerBaseActivity implements OnMapReadyCallbac
             LatLng startPosition = new LatLng(latitude, longitude);
             CameraPosition cameraPosition = new CameraPosition.Builder()
                     .target(startPosition)
-                    .zoom(16)
+                    .zoom(15)
                     .build();
             mGoogleMap.moveCamera(CameraUpdateFactory.newCameraPosition(cameraPosition));
         }

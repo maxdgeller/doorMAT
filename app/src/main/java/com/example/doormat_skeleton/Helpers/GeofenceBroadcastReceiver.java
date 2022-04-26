@@ -55,7 +55,7 @@ public class GeofenceBroadcastReceiver extends BroadcastReceiver implements Chil
         String notifString;
         switch (transitionType) {
             case Geofence.GEOFENCE_TRANSITION_ENTER:
-                Toast.makeText(context, "GEOFENCE_TRANSITION_ENTER", Toast.LENGTH_SHORT).show();
+                DebugHelper.showShortMessage(context, "GEOFENCE_TRANSITION_ENTER");
                 Log.d(TAG, "geofenceList: " + geofenceList);
                 //update entered geofences list
                 LocationApplication.addEnteredGeofences(new ArrayList<Geofence>(geofenceList));
@@ -77,10 +77,10 @@ public class GeofenceBroadcastReceiver extends BroadcastReceiver implements Chil
 
                 break;
             case Geofence.GEOFENCE_TRANSITION_DWELL:
-                Toast.makeText(context, "GEOFENCE_TRANSITION_DWELL", Toast.LENGTH_SHORT).show();
+                DebugHelper.showShortMessage(context, "GEOFENCE_TRANSITION_DWELL");
                 break;
             case Geofence.GEOFENCE_TRANSITION_EXIT:
-                Toast.makeText(context, "GEOFENCE_TRANSITION_EXIT", Toast.LENGTH_SHORT).show();
+                DebugHelper.showShortMessage(context, "GEOFENCE_TRANSITION_EXIT");
 
                 LocationApplication.removeEnteredGeofences((ArrayList<Geofence>) geofenceList);
                 LocationApplication.removeNearbyChildNodes((ArrayList<Geofence>) geofenceList);
@@ -117,15 +117,14 @@ public class GeofenceBroadcastReceiver extends BroadcastReceiver implements Chil
             List<AnchorResult.DatabaseAnchor> enteredDoormatsList = enteredDatabaseAnchors.stream().limit(3).collect(Collectors.toList());
 
             for (AnchorResult.DatabaseAnchor d : enteredDoormatsList) {
-                notifString.append(d.getAnchor_id());
-                notifString.append(", ");
                 notifString.append(d.getColor());
-                notifString.append(", ");
+                notifString.append(" ");
                 notifString.append(d.getShape());
-                notifString.append(", about ");
+                notifString.append(" about ");
                 notifString.append(String.format(Locale.US, "%.2f", d.getProximity()));
-                notifString.append(" meters\n");
+                notifString.append(" meters away\n");
             }
+            notifString.deleteCharAt(notifString.length() - 1);
 
             return notifString.toString();
         }

@@ -11,6 +11,7 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 
+import com.example.doormat_skeleton.BuildConfig;
 import com.example.doormat_skeleton.LocationApplication;
 
 import java.io.File;
@@ -27,10 +28,30 @@ public class DebugHelper {
     }
 
     //make sure anything passed here has a readable, useful toString() method
-    public void logObjects(String sentTag, ArrayList<Object> objects) {
-        Log.d(TAG, sentTag);
-        for (Object o : objects) {
-            Log.d(TAG, o.toString());
+    public static void logObjects(String sentTag, ArrayList<Object> objects) {
+        if (BuildConfig.DEBUG) {
+            Log.d(TAG, sentTag);
+            for (Object o : objects) {
+                Log.d(TAG, o.toString());
+            }
+        }
+    }
+
+    public static void logMessage(String sentTag, String message) {
+        if (BuildConfig.DEBUG) {
+            Log.d(TAG, sentTag + ": " + message);
+        }
+    }
+
+    public static void showShortMessage(Context context, String message) {
+        if (BuildConfig.DEBUG) {
+            Toast.makeText(context, message, Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    public static void showLongMessage(Context context, String message) {
+        if (BuildConfig.DEBUG) {
+            Toast.makeText(context, message, Toast.LENGTH_LONG).show();
         }
     }
 }

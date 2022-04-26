@@ -11,6 +11,7 @@ import com.android.volley.RequestQueue;
 import com.android.volley.VolleyError;
 import com.android.volley.toolbox.StringRequest;
 import com.android.volley.toolbox.Volley;
+import com.example.doormat_skeleton.Helpers.DebugHelper;
 
 import org.json.JSONException;
 
@@ -52,15 +53,12 @@ public class ChildRetrieval {
                 }
                 Log.d(TAG, "onResponse: " + response);
 
-
-                // on below line we are displaying a success toast message.
-                Toast.makeText(context.getApplicationContext(), "Anchor's child node retrieved.", Toast.LENGTH_SHORT).show();
+                DebugHelper.showShortMessage(context.getApplicationContext(), "Anchor's child node retrieved.");
             }
         }, new com.android.volley.Response.ErrorListener() {
             @Override
             public void onErrorResponse(VolleyError error) {
-                // method to handle errors.
-                Toast.makeText(context.getApplicationContext(), "Fail to get response = " + error, Toast.LENGTH_SHORT).show();
+                DebugHelper.showShortMessage(context.getApplicationContext(), "Fail to get response = " + error);
             }
         }) {
             @Override
