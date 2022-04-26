@@ -1,48 +1,29 @@
 package com.example.doormat_skeleton;
 
-import static android.content.ContentValues.TAG;
-
-import androidx.appcompat.app.AlertDialog;
-import androidx.appcompat.app.AppCompatActivity;
-
-import android.content.DialogInterface;
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
-import android.text.InputType;
-import android.util.Log;
-import android.view.LayoutInflater;
 import android.view.View;
-import android.widget.Button;
-import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import com.example.doormat_skeleton.databinding.ActivityDashboardBinding;
 import com.google.gson.Gson;
-import com.google.gson.reflect.TypeToken;
 
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.lang.reflect.Type;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
 
-public class Profile extends DrawerBaseActivity {
+public class Profile extends DrawerBaseActivity implements AnchorRetrieval.VolleyCallback {
 
     public static final String KEY_CONNECTIONS = "KEY_CONNECTIONS";
     ActivityDashboardBinding activityDashboardBinding;
     SessionManager sessionManager;
-    DoormatManager doormatManager;
-    StoreManager storeManager;
-    HashSet<UserData.Doormat> mDoormats;
+    AnchorRetrieval anchorRetrieval;
+    HashSet<AnchorResult.DatabaseAnchor> mDatabaseAnchors;
     String mName;
-    String mEmail;
-
 
 
 
@@ -69,9 +50,10 @@ public class Profile extends DrawerBaseActivity {
         TextView setName = findViewById(R.id.usertag);
         setName.setText(mName);
 
-//        mDoormats = LocationApplication.getCurrentDoormats();
+        anchorRetrieval = new AnchorRetrieval();
 
-        storeManager = new StoreManager();
+        anchorRetrieval.getAnchors(this, 28.135974884033203, -82.50953674316406, LocationApplication.SEARCH_RADIUS);
+        anchorRetrieval.setVolleyCallback(this);
 
 //        String connectionsJSONString = getPreferences(MODE_PRIVATE).getString(KEY_CONNECTIONS, null);
 //        Type type = new TypeToken< List < UserData.Doormat >>() {}.getType();
@@ -81,89 +63,26 @@ public class Profile extends DrawerBaseActivity {
 
         TextView placed = findViewById(R.id.placed);
         placed.setText(String.valueOf(placedMats));
+    }
 
-        ImageButton updateEmail = findViewById(R.id.updateEmailBtn);
-        ImageButton updatePassword = findViewById(R.id.updatePasswordBtn);
+    @Override
+    public void onSuccessResponse(String result) throws JSONException {
+        PreferenceManager.getDefaultSharedPreferences(this).edit().putString("MYLABEL", result).apply();
+        JSONObject obj = new JSONObject(result);
 
-        updateEmail.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                EditText email = new EditText(Profile.this);
-                email.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS);
+        AnchorResult user_data = (AnchorResult) new Gson().fromJson(obj.toString(), AnchorResult.class);
+        mDatabaseAnchors = user_data.getData();
 
-                AlertDialog.Builder emailBuilder = new AlertDialog.Builder(Profile.this);
-
-                emailBuilder.setView(email);
-                emailBuilder.setMessage("Enter new email: ");
-
-                emailBuilder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialogInterface, int i) {
-                        mEmail = email.getText().toString();
-//                        storeManager.updateEmail(Profile.this, mName, mEmail);
-                        Log.d(TAG, "onClick: " + mEmail);
-                    }
-                });
-                emailBuilder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialogInterface, int i) {
-                        dialogInterface.cancel();
-                    }
-                });
-                emailBuilder.show();
-            }
-        });
-
-        updatePassword.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-
-
-                AlertDialog.Builder passwordBuilder = new AlertDialog.Builder(Profile.this);
-                LayoutInflater inflater = Profile.this.getLayoutInflater();
-
-                View mView = getLayoutInflater().inflate(R.layout.password_update, null);
-                passwordBuilder.setView(mView);
-                passwordBuilder.setMessage("Enter new password, then confirm password: ");
-
-                passwordBuilder.setPositiveButton("Ok", new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialogInterface, int i) {
-
-                        EditText setPass = (EditText) mView.findViewById(R.id.password1);
-                        EditText confPass = (EditText) mView.findViewById(R.id.password_confirm);
-
-                        String passSet = setPass.getText().toString();
-                        String passConf = confPass.getText().toString();
-
-                        if(passSet.equals(passConf)){
-                            storeManager.updatePassword(Profile.this, mName, passSet);
-                        }else{
-                            Toast.makeText(Profile.this, "Passwords do not match", Toast.LENGTH_SHORT).show();
-                        }
-
-                    }
-                });
-
-                passwordBuilder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialogInterface, int i) {
-                        dialogInterface.dismiss();
-                    }
-                });
-                passwordBuilder.show();
-
-            }
-        });
     }
 
     public int countMats(){
         int placedMats = 0;
-        if(mDoormats != null) {
-            for (UserData.Doormat d : mDoormats) {
+        if(mDatabaseAnchors != null) {
+            for (AnchorResult.DatabaseAnchor d : mDatabaseAnchors) {
                 if (d.getCreated_by().equals(mName)) {
                     placedMats++;
                 }
+
             }
         }
         return placedMats;

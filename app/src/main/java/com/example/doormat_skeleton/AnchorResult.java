@@ -1,33 +1,35 @@
 package com.example.doormat_skeleton;
 
+import com.google.ar.sceneform.math.Quaternion;
+import com.google.ar.sceneform.math.Vector3;
+
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Objects;
 
-//class for doormat objects.
-//class for doormat objects.
+public class AnchorResult {
 
-public class UserData {
-
-    private HashSet<Doormat> data;
+    private HashSet<DatabaseAnchor> data;
 
     //this allows us to return a HashSet of all doormats pulled from the database.
-    public HashSet<Doormat> getData() {
+    public HashSet<DatabaseAnchor> getData() {
         return data;
     }
 
-    public void setData(HashSet<Doormat> data) {
+    public void setData(HashSet<DatabaseAnchor> data) {
         this.data = data;
     }
 
-    public static class Doormat implements Comparable<Doormat> {
+    public static class DatabaseAnchor implements Comparable<DatabaseAnchor> {
 
         //fields for the database table
-        private String doormat_id;
+        private String anchor_id;
+        private String color;
+        private String shape;
         private double latitude;
         private double longitude;
         private String created_by;
-        private String shape;
-        private String color;
+
 
         //fields not to be in the database
         //proximity to user; should be -1 except when manually setting it for comparison purposes
@@ -38,12 +40,12 @@ public class UserData {
 
         //getters and setters
 
-        public String getDoormat_id() {
-            return doormat_id;
+        public String getAnchor_id() {
+            return anchor_id;
         }
 
-        public void setDoormat_id(String doormat_id) {
-            this.doormat_id = doormat_id;
+        public void setAnchor_id(String anchor_id) {
+            this.anchor_id = anchor_id;
         }
 
         public double getLatitude() {
@@ -104,7 +106,7 @@ public class UserData {
 
         //proximity of -1 is not a real proximity, so it goes at the end
         @Override
-        public int compareTo(Doormat d) {
+        public int compareTo(DatabaseAnchor d) {
             if (getProximity() == d.getProximity()) {
                 return 0;
             }
@@ -118,13 +120,13 @@ public class UserData {
         public boolean equals(Object o) {
             if (this == o) return true;
             if (o == null || getClass() != o.getClass()) return false;
-            Doormat doormat = (Doormat) o;
-            return getDoormat_id().equals(doormat.getDoormat_id());
+            DatabaseAnchor databaseAnchor = (DatabaseAnchor) o;
+            return getAnchor_id().equals(databaseAnchor.getAnchor_id());
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(getDoormat_id());
+            return Objects.hash(getAnchor_id());
         }
     }
 }

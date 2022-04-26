@@ -21,7 +21,6 @@ import com.google.android.gms.maps.model.CameraPosition;
 import com.google.android.gms.maps.model.LatLng;
 
 import java.util.HashSet;
-import java.util.Set;
 
 public class MapActivity extends DrawerBaseActivity implements OnMapReadyCallback {
 
@@ -29,7 +28,6 @@ public class MapActivity extends DrawerBaseActivity implements OnMapReadyCallbac
 
     //Initialize variables
     private static GoogleMap mGoogleMap;
-    SupportMapFragment mapFrag;
     float DEFAULT_LATITUDE = (float) 0;
     float DEFAULT_LONGITUDE = (float) 0;
     float DEFAULT_ZOOM = 14;
@@ -37,7 +35,6 @@ public class MapActivity extends DrawerBaseActivity implements OnMapReadyCallbac
     LocationApplication locationApplication;
 
     private final int VIEW_MODE_REQUEST_CODE = 1;
-//    boolean isPlaced;
 
     //we may want this constants again if we re-implement in-app location permission requests
     //i temporarily removed location requests to make debugging simpler, but we can add them again if we want
@@ -46,37 +43,32 @@ public class MapActivity extends DrawerBaseActivity implements OnMapReadyCallbac
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        Log.i("Map Activity", "onCreate");
 
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_map);
 
         //Initialize map fragment
-        mapFrag = (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map);
+        SupportMapFragment mapFrag = (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map);
         assert mapFrag != null;
         mapFrag.getMapAsync(this);
     }
 
     @Override
     protected void onStart() {
-        Log.i("Map Activity", "onStart");
         super.onStart();
     }
 
     @Override
     protected void onResume() {
-        Log.i("Map Activity", "onResume");
         super.onResume();
     }
 
     @Override
     public void onMapReady(@NonNull GoogleMap googleMap) {
-        Log.i("Map Activity", "onMapReady");
         mGoogleMap = googleMap;
 
-        locationApplication = (LocationApplication) getApplication();
         loadCameraLocation();
-        locationApplication.updateCircles(googleMap, new HashSet<UserData.Doormat>());
+        LocationApplication.updateCircles(googleMap);
 
         if ((!googleMap.isMyLocationEnabled()) && (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED)) {
             googleMap.setMyLocationEnabled(true);
@@ -88,15 +80,11 @@ public class MapActivity extends DrawerBaseActivity implements OnMapReadyCallbac
 
     @Override
     public void onPause() {
-        Log.i("Map Activity", "onPause");
-
         super.onPause();
     }
 
     @Override
     protected void onStop() {
-        Log.i("Map Activity", "onStop");
-
         super.onStop();
     }
 
@@ -127,25 +115,25 @@ public class MapActivity extends DrawerBaseActivity implements OnMapReadyCallbac
 
     private void loadCameraLocation() {
         if (mGoogleMap != null) {
-            SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
+//            SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
             double longitude;
             double latitude;
-            float zoom = sharedPref.getFloat("camera zoom", DEFAULT_ZOOM);
+//            float zoom = sharedPref.getFloat("camera zoom", DEFAULT_ZOOM);
 
-            Location location = locationApplication.getLastLocation();
-            if (location != null) {
+            Location location = LocationApplication.getLastLocation();
+//            if (location != null) {
                 longitude = location.getLongitude();
                 latitude = location.getLatitude();
-            }
-            else {
-                longitude = sharedPref.getFloat("camera longitude", DEFAULT_LONGITUDE);
-                latitude = sharedPref.getFloat("camera latitude", DEFAULT_LATITUDE);
-            }
+//            }
+//            else {
+//                longitude = sharedPref.getFloat("camera longitude", DEFAULT_LONGITUDE);
+//                latitude = sharedPref.getFloat("camera latitude", DEFAULT_LATITUDE);
+//            }
 
             LatLng startPosition = new LatLng(latitude, longitude);
             CameraPosition cameraPosition = new CameraPosition.Builder()
                     .target(startPosition)
-                    .zoom(zoom)
+                    .zoom(16)
                     .build();
             mGoogleMap.moveCamera(CameraUpdateFactory.newCameraPosition(cameraPosition));
         }
@@ -156,12 +144,12 @@ public class MapActivity extends DrawerBaseActivity implements OnMapReadyCallbac
 //        double longitude = sharedPref.getFloat("longitude", DEFAULT_LONGITUDE);
 //        double latitude = sharedPref.getFloat("latitude", DEFAULT_LATITUDE);
 
-        Location location = locationApplication.getLastLocation();
+//        Location location = LocationApplication.getLastLocation();
 
-        LatLng latLng = new LatLng(location.getLatitude(), location.getLongitude());
-        Intent i = new Intent(MapActivity.this, ViewMode.class);
-        i.putExtra("LatLng", latLng);
-        startActivityForResult(i, VIEW_MODE_REQUEST_CODE);
+//        LatLng latLng = new LatLng(location.getLatitude(), location.getLongitude());
+        Intent intent = new Intent(MapActivity.this, ViewMode.class);
+        startActivity(intent);
+//        startActivityForResult(i, VIEW_MODE_REQUEST_CODE);
     }
 
     public void centerOnUserOnClick(View view) {
@@ -169,7 +157,7 @@ public class MapActivity extends DrawerBaseActivity implements OnMapReadyCallbac
     }
 
     public void centerOnUser() {
-        Location location = locationApplication.getLastLocation();
+        Location location = LocationApplication.getLastLocation();
         if ((location != null) && (mGoogleMap != null)) {
             double longitude = location.getLongitude();
             double latitude = location.getLatitude();

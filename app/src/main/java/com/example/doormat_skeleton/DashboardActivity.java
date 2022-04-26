@@ -19,12 +19,12 @@ import java.util.List;
 public class DashboardActivity extends DrawerBaseActivity {
 
 
-    DoormatManager doormatManager;
-    DoormatManager.VolleyCallback callback;
+    AnchorRetrieval anchorRetrieval;
+    AnchorRetrieval.VolleyCallback callback;
     private TextView username;
     SessionManager sessionManager;
     ActivityDashboardBinding activityDashboardBinding;
-    public List<UserData.Doormat> mDoormats;
+    public List<AnchorResult.DatabaseAnchor> mDatabaseAnchors;
 
 
     public static final String KEY_CONNECTIONS = "KEY_CONNECTIONS";
