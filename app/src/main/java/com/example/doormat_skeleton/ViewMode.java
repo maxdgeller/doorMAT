@@ -442,6 +442,17 @@ public class ViewMode extends AppCompatActivity implements AdapterView.OnItemSel
                 rootTNode.setParent(rootNode);
                 rootTNode.setRenderable(getRenderable(colorChoice, shapeChoice));
                 rootTNode.select();
+
+                rootTNode.setOnTapListener(new TransformableNode.OnTapListener() {
+                    @Override
+                    public void onTap(HitTestResult hitTestResult, MotionEvent motionEvent) {
+                        TransformableNode t = (TransformableNode) hitTestResult.getNode();
+                        assert t != null;
+                        t.select();
+                        findViewById(R.id.remove).setVisibility(View.INVISIBLE);
+                    }
+                });
+
                 findViewById(R.id.hostBtn).setVisibility(View.VISIBLE);
                 findViewById(R.id.clear).setVisibility(View.VISIBLE);
             }
