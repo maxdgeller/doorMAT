@@ -250,6 +250,13 @@ public class ViewMode extends AppCompatActivity implements AdapterView.OnItemSel
                 node.setWorldScale(cn.getScale());
                 node.setWorldRotation(cn.getRotation());
                 node.setRenderable(getRenderable(cn.getColor(), cn.getShape()));
+
+//                node.setOnTapListener(new TransformableNode.OnTapListener() {
+//                    @Override
+//                    public void onTap(HitTestResult hitTestResult, MotionEvent motionEvent) {
+//                        Toast.makeText(ViewMode.this, cn.getMessage(), Toast.LENGTH_SHORT).show();
+//                    }
+//                });
             }
         }
     }
