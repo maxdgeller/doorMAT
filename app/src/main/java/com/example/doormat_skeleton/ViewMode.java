@@ -37,6 +37,7 @@ import com.google.ar.core.exceptions.UnavailableArcoreNotInstalledException;
 import com.google.ar.core.exceptions.UnavailableDeviceNotCompatibleException;
 import com.google.ar.core.exceptions.UnavailableSdkTooOldException;
 import com.google.ar.core.exceptions.UnavailableUserDeclinedInstallationException;
+import com.google.ar.sceneform.HitTestResult;
 import com.google.ar.sceneform.Node;
 import com.google.ar.sceneform.math.Quaternion;
 import com.google.ar.sceneform.rendering.Material;
@@ -447,6 +448,17 @@ public class ViewMode extends AppCompatActivity implements AdapterView.OnItemSel
                 tNode.setParent(an);
                 tNode.setRenderable(getRenderable(colorChoice, shapeChoice));
                 tNode.select();
+
+                tNode.setOnTapListener(new TransformableNode.OnTapListener() {
+                    @Override
+                    public void onTap(HitTestResult hitTestResult, MotionEvent motionEvent) {
+                        TransformableNode t = (TransformableNode) hitTestResult.getNode();
+                        assert t != null;
+                        t.select();
+                        findViewById(R.id.remove).setVisibility(View.VISIBLE);
+                    }
+                });
+
                 findViewById(R.id.remove).setVisibility(View.VISIBLE);
             }
 

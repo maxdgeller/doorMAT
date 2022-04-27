@@ -138,8 +138,6 @@ public class LocationApplication extends Application implements Application.Acti
         Log.i(TAG, "onCreate");
         sContext = getApplicationContext();
 
-        DebugHelper debugHelper = new DebugHelper();
-
         registerActivityLifecycleCallbacks(this);
 
         locationClient = LocationServices.getFusedLocationProviderClient(this);
