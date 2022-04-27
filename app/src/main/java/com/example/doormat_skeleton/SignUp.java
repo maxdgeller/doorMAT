@@ -32,10 +32,11 @@ import java.util.Map;
 
 public class SignUp extends AppCompatActivity {
     //Initializing variables
-    private EditText textUsername, textPassword, textEmail;
+    private EditText textUsername, textPassword, textPasswordConf, textEmail;
     private Button buttonInsert;
     private FloatingActionButton backBtn;
     private ProgressBar progressBar;
+    String emailPattern = "[a-zA-Z0-9._-]+@[a-z]+\\.+[a-z]+";
 
 
 
@@ -46,6 +47,7 @@ public class SignUp extends AppCompatActivity {
 
         textUsername = findViewById(R.id.username);
         textPassword = findViewById(R.id.password);
+        textPasswordConf = findViewById(R.id.password2);
         textEmail = findViewById(R.id.email);
         buttonInsert = findViewById(R.id.sign_in);
         progressBar = findViewById(R.id.progress_bar);
@@ -54,13 +56,19 @@ public class SignUp extends AppCompatActivity {
             @Override
             public void onClick(View view) {
 
-                String username, password, email;
-                username = String.valueOf(textUsername.getText());
-                password = String.valueOf(textPassword.getText());
-                email = String.valueOf(textEmail.getText());
+                String username, password, email, passwordConf;
+                username = String.valueOf(textUsername.getText()).trim();
+                password = String.valueOf(textPassword.getText()).trim();
+                passwordConf = String.valueOf(textPasswordConf.getText()).trim();
+                email = String.valueOf(textEmail.getText()).trim();
 
-
-                if(!username.equals("") && !password.equals("") && !email.equals("")) {
+                if(username.equals("") || password.equals("") || email.equals("")){
+                    Toast.makeText(SignUp.this, "All fields must be entered", Toast.LENGTH_SHORT).show();
+                }else if(!password.equals(passwordConf)){
+                    Toast.makeText(SignUp.this, "Passwords do not match", Toast.LENGTH_SHORT).show();
+                }else if(!email.matches(emailPattern)){
+                    Toast.makeText(SignUp.this, "Email must be a valid address", Toast.LENGTH_SHORT).show();
+                }else{
                     progressBar.setVisibility(View.VISIBLE);
                     Handler handler = new Handler(Looper.getMainLooper());
                     handler.post(new Runnable() {
@@ -96,97 +104,9 @@ public class SignUp extends AppCompatActivity {
                             //End Write and Read data with URL
                         }
                     });
-                }else{
-                    Toast.makeText(getApplicationContext(), "All fields are required", Toast.LENGTH_SHORT).show();
                 }
-
             }
         });
 
-
-
-
-
-
-//        // Reference variables by ID's from XML format
-//        textUsername = findViewById(R.id.username);
-//        textPassword = findViewById(R.id.password);
-//        textEmail = findViewById(R.id.email);
-//        buttonInsert = findViewById(R.id.sign_in);
-//
-//        //Set an Onclick Listener
-//        buttonInsert.setOnClickListener(new View.OnClickListener() {
-//            @Override
-//            public void onClick(View view) {
-//                // Create an Insert Function
-//                insertData();
-//            }
-//        });
-//
-//    }
-//
-//    public void back(View v){
-//        Intent i = new Intent(this, MainActivity.class);
-//        startActivity(i);
-//    }
-//
-//    private void insertData() {
-//        //Defining variables for getting info from user input
-//        final String username = textUsername.getText().toString();
-//        final String password = textPassword.getText().toString();
-//        final String email = textEmail.getText().toString();
-//
-//        //Validate inputs
-//        if (username.isEmpty()) {
-//            textUsername.setError("Please enter name");
-//        } else if (password.isEmpty()) {
-//            textPassword.setError("Please enter password");
-//        } else if (email.isEmpty()) {
-//            textEmail.setError("Please enter email");
-//        }else{
-//            //Get the insert URL
-//            String insert_url = "http://34.203.214.232/mysite/insertData.php";
-//            //Communicate with backend
-//            StringRequest stringRequest = new StringRequest(Request.Method.POST, insert_url,
-//                    new Response.Listener<String>() {
-//                        @Override
-//                        public void onResponse(String response) {
-//                            //Set Response
-//                            try {
-//                                JSONObject jsonObject = new JSONObject(response);
-//                                String success = jsonObject.getString("success");
-//
-//                                if (success.equals("1")){
-//                                    Toast.makeText(SignUp.this, "User data has been inserted", Toast.LENGTH_SHORT ).show();
-//
-//                                }
-//                            }catch (JSONException e){
-//                                e.printStackTrace();
-//                            }
-//                        }
-//                    },
-//                    new Response.ErrorListener() {
-//                        @Override
-//                        public void onErrorResponse(VolleyError error) {
-//                            Toast.makeText(SignUp.this, "Unable to insert data" + error.toString(), Toast.LENGTH_SHORT).show();
-//                        }
-//                    }){
-//                //Set Parameters that will also match with the API
-//
-//                @Override
-//                protected Map<String, String> getParams() throws AuthFailureError {
-//                    //Create hashmap, equivalent to an array
-//                    Map<String, String> params = new HashMap<>();
-//                    params.put("username", username);
-//                    params.put("password", password);
-//                    params.put("email", email);
-//
-//                    return params;
-//                }
-//            };
-//            //Set a requestQueue, enables Volley communication to backend
-//            RequestQueue requestQueue = Volley.newRequestQueue(this);
-//            requestQueue.add(stringRequest);
-//        }
     }
 }

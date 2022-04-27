@@ -21,12 +21,13 @@
         android:id="@+id/username"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="44dp"
+        android:layout_marginTop="64dp"
+        android:drawableEnd="@drawable/ic_baseline_person_24"
         android:ems="10"
         android:hint="@string/enter_username"
         android:inputType="textPersonName"
-        android:drawableEnd="@drawable/ic_baseline_person_24"
         app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.497"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/textView3" />
 
@@ -34,29 +35,46 @@
         android:id="@+id/password"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="68dp"
+        android:layout_marginTop="16dp"
+        android:drawableEnd="@drawable/ic_baseline_lock_24"
         android:ems="10"
         android:hint="@string/enter_password"
         android:inputType="textPassword"
-        android:drawableEnd="@drawable/ic_baseline_lock_24"
         app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.502"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/username" />
+
+    <EditText
+        android:id="@+id/password2"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:drawableEnd="@drawable/ic_baseline_lock_24"
+        android:ems="10"
+        android:hint="confirm password"
+        android:inputType="textPassword"
+        app:layout_constraintBottom_toTopOf="@+id/sign_in"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.502"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/password"
+        app:layout_constraintVertical_bias="0.0" />
 
     <EditText
         android:id="@+id/email"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="68dp"
+        android:drawableEnd="@drawable/ic_baseline_alternate_email_24"
         android:ems="10"
         android:hint="@string/enter_email"
         android:inputType="textEmailAddress"
-        android:drawableEnd="@drawable/ic_baseline_alternate_email_24"
         app:layout_constraintBottom_toTopOf="@+id/sign_in"
         app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.497"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/password"
-        app:layout_constraintVertical_bias="0.0" />
+        app:layout_constraintTop_toBottomOf="@+id/password2"
+        app:layout_constraintVertical_bias="0.137" />
 
     <ProgressBar
         android:id="@+id/progress_bar"

@@ -192,6 +192,68 @@ public class StoreManager {
 
     }
 
+    public void updateEmail(Activity activity, String username, String email){
+        Handler handler = new Handler(Looper.getMainLooper());
+        handler.post(new Runnable() {
+            @Override
+            public void run() {
+                //Starting Write and Read data with URL
+                //Creating array for parameters
+                String[] field = new String[2];
+                field[0] = "username";
+                field[1] = "email";
+                //Creating array for data
+                String[] data = new String[2];
+                data[0] = username;
+                data[1] = email;
+                PutData putData = new PutData("http://34.203.214.232/mysite/updateEmail.php", "POST", field, data);
+                if (putData.startPut()) {
+                    if (putData.onComplete()) {
+                        String result = putData.getResult();
+                        if(result.equals("Email updated successfully")){
+                            Toast.makeText(activity, result, Toast.LENGTH_SHORT).show();
+                        }else{
+                            Toast.makeText(activity, result, Toast.LENGTH_SHORT).show();
+                        }
+                        Log.i("PutData", result);
+                    }
+                }
+                //End Write and Read data with URL
+            }
+        });
+    }
+
+    public void updatePassword(Activity activity, String username, String password){
+        Handler handler = new Handler(Looper.getMainLooper());
+        handler.post(new Runnable() {
+            @Override
+            public void run() {
+                //Starting Write and Read data with URL
+                //Creating array for parameters
+                String[] field = new String[2];
+                field[0] = "username";
+                field[1] = "password";
+                //Creating array for data
+                String[] data = new String[2];
+                data[0] = username;
+                data[1] = password;
+                PutData putData = new PutData("http://34.203.214.232/mysite/updatePassword.php", "POST", field, data);
+                if (putData.startPut()) {
+                    if (putData.onComplete()) {
+                        String result = putData.getResult();
+                        if(result.equals("Password updated successfully")){
+                            Toast.makeText(activity, result, Toast.LENGTH_SHORT).show();
+                        }else{
+                            Toast.makeText(activity, result, Toast.LENGTH_SHORT).show();
+                        }
+                        Log.i("PutData", result);
+                    }
+                }
+                //End Write and Read data with URL
+            }
+        });
+    }
+
 
     /**
      * Retrieves the cloud anchor ID using a short code. Returns an empty string if a cloud anchor ID
