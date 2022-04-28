@@ -1,5 +1,7 @@
 package com.example.doormat_skeleton;
 
+import static com.example.doormat_skeleton.Helpers.DebugHelper.showLongMessage;
+
 import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.Activity;
@@ -81,7 +83,7 @@ public class LocationApplication extends Application implements Application.Acti
     private final static int GRANTED = PackageManager.PERMISSION_GRANTED;
 
     public final static float SEARCH_RADIUS = 5000; //radius around user from which to get nearby cloud anchors' coordinates from database
-    private final static float ON_MAP_RADIUS = 1500; //radius around user in which nearby cloud anchors and their geofences will be marked on the map
+    public final static float ON_MAP_RADIUS = 1500; //radius around user in which nearby cloud anchors and their geofences will be marked on the map
 
     private final static LocationRequest FOREGROUND_LOCATIONREQUEST = LocationRequest.create()
             .setInterval(5500)
@@ -105,7 +107,7 @@ public class LocationApplication extends Application implements Application.Acti
 
     /********************************* geofence constants **********************************/
 
-    private static final float GEOFENCE_RADIUS = 250; //radius around anchor within which a notification is triggered
+    public static final float GEOFENCE_RADIUS = 250; //radius around anchor within which a notification is triggered
 
     /********************************* geofence variables **********************************/
 
@@ -652,7 +654,7 @@ public class LocationApplication extends Application implements Application.Acti
         //and make them invisible if they're more than ON_MAP_RADIUS away from user.
         for (Circle c : CIRCLE_MAP.values()) {
             double dist = distance(mLastLocation.getLatitude(), c.getCenter().latitude, mLastLocation.getLongitude(), c.getCenter().longitude);
-            if (dist >= ON_MAP_RADIUS && c.isVisible()) {
+            if (dist >= ON_MAP_RADIUS) {
                 c.setVisible(false);
             }
             else {
@@ -680,22 +682,29 @@ public class LocationApplication extends Application implements Application.Acti
                 }
 
                 if (enteredGeofences.containsKey(id) && (c.getTag() instanceof String)) {
+                    if ((c.getTag() instanceof String)) {
+                        MarkerOptions markerOptions = new MarkerOptions();
+                        markerOptions.position(new LatLng(d.getLatitude(), d.getLongitude()));
+                        markerOptions.draggable(false);
+                        markerOptions.visible(true);
+                        Marker marker = map.addMarker(markerOptions);
+                        c.setTag(marker);
+                    }
                     c.setStrokeColor(Color.argb(120, Color.red(color), Color.green(color), Color.blue(color)));
                     c.setFillColor(Color.argb(70, Color.red(color), Color.green(color), Color.blue(color)));
-
-                    MarkerOptions markerOptions = new MarkerOptions();
-                    markerOptions.position(new LatLng(d.getLatitude(), d.getLongitude()));
-                    markerOptions.draggable(false);
-                    markerOptions.visible(true);
-                    Marker marker = map.addMarker(markerOptions);
-                    c.setTag(marker);
                 }
-                else if (!enteredGeofences.containsKey(id) && !(c.getTag() instanceof String)) {
-                    Marker marker = (Marker) c.getTag();
-                    marker.remove();
+                else if (!enteredGeofences.containsKey(id)) {
+                    if (!(c.getTag() instanceof String)) {
+                        Marker marker = (Marker) c.getTag();
+                        marker.remove();
+                        c.setTag(id);
+                    }
+                    else {
+
+                    }
                     c.setStrokeColor(Color.argb((int) (strokeAlpha * ratio), Color.red(color), Color.green(color), Color.blue(color)));
                     c.setFillColor(Color.argb((int) (fillAlpha * ratio), Color.red(color), Color.green(color), Color.blue(color)));
-                    c.setTag(id);
+
 
                 }
 

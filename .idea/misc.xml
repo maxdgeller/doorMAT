@@ -4,10 +4,6 @@
     <option name="filePathToZoomLevelMap">
       <map>
         <entry key="..\:/Users/Tony/AndroidStudioProjects/doorMAT-new/app/src/main/res/layout/activity_view_mode.xml" value="0.2259963768115942" />
-        <entry key="..\:/Users/Tony/AndroidStudioProjects/doorMAT-profile-testing/app/src/main/res/layout/activity_sign_up.xml" value="0.35280797101449274" />
-        <entry key="..\:/Users/Tony/AndroidStudioProjects/doorMAT-profile-testing/app/src/main/res/layout/password_update.xml" value="0.35280797101449274" />
-        <entry key="..\:/Users/Tony/AndroidStudioProjects/doorMAT-profile-testing/app/src/main/res/layout/update_email.xml" value="0.35280797101449274" />
-        <entry key="..\:/Users/Tony/AndroidStudioProjects/doorMAT-profile-testing/app/src/main/res/layout/update_password.xml" value="0.35280797101449274" />
         <entry key="..\:/Users/Tony/AndroidStudioProjects/doorMATbuttontests/app/src/main/res/drawable/ic_red.xml" value="0.257" />
         <entry key="..\:/Users/Tony/AndroidStudioProjects/doorMATbuttontests/app/src/main/res/layout/activity_dashboard.xml" value="0.25" />
         <entry key="..\:/Users/Tony/AndroidStudioProjects/doorMATbuttontests/app/src/main/res/layout/activity_drawer_base.xml" value="0.36666666666666664" />
@@ -27,6 +23,7 @@
         <entry key="..\:/Users/Tony/AndroidStudioProjects/doorMATpleasework/app/src/main/res/layout/activity_view_mode.xml" value="0.25" />
         <entry key="..\:/Users/Tony/AndroidStudioProjects/doorMATpleasework/app/src/main/res/layout/content_layout.xml" value="0.19322916666666667" />
         <entry key="..\:/Users/Tony/AndroidStudioProjects/doorMATpleasework/app/src/main/res/layout/list_item.xml" value="0.18802083333333333" />
+        <entry key="..\:/Users/maxdg/AndroidStudioProjects/doorMAT_Skeleton-2.5/app/src/main/res/layout/activity_dashboard.xml" value="0.67" />
         <entry key="..\:/Users/maxdg/AndroidStudioProjects/doorMAT_Skeleton-2.5/app/src/main/res/layout/activity_map.xml" value="0.2" />
         <entry key="..\:/Users/maxdg/AndroidStudioProjects/doorMAT_Skeleton-2.5/app/src/main/res/layout/activity_view_mode.xml" value="0.42291666666666666" />
       </map>

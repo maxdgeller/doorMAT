@@ -19,6 +19,7 @@ import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.CameraPosition;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.LatLngBounds;
 
 import java.util.HashSet;
 
@@ -130,13 +131,23 @@ public class MapActivity extends DrawerBaseActivity implements OnMapReadyCallbac
 //                latitude = sharedPref.getFloat("camera latitude", DEFAULT_LATITUDE);
 //            }
 
-            LatLng startPosition = new LatLng(latitude, longitude);
-            CameraPosition cameraPosition = new CameraPosition.Builder()
-                    .target(startPosition)
-                    .zoom(15)
-                    .build();
-            mGoogleMap.moveCamera(CameraUpdateFactory.newCameraPosition(cameraPosition));
+//            LatLng startPosition = new LatLng(latitude, longitude);
+//            CameraPosition cameraPosition = new CameraPosition.Builder()
+//                    .target(startPosition)
+//                    .zoom(15)
+//                    .build();
+//            mGoogleMap.moveCamera(CameraUpdateFactory.newCameraPosition(cameraPosition));
+            LatLngBounds mapRadiusBounds = new LatLngBounds(
+                    new LatLng(latitude - metersToDegrees(LocationApplication.ON_MAP_RADIUS + LocationApplication.GEOFENCE_RADIUS), longitude - metersToDegrees(LocationApplication.ON_MAP_RADIUS + LocationApplication.GEOFENCE_RADIUS)), // SW bounds
+                    new LatLng(latitude + metersToDegrees(LocationApplication.ON_MAP_RADIUS + LocationApplication.GEOFENCE_RADIUS), longitude + metersToDegrees(LocationApplication.ON_MAP_RADIUS + LocationApplication.GEOFENCE_RADIUS))  // NE bounds
+            );
+            mGoogleMap.moveCamera(CameraUpdateFactory.newLatLngBounds(mapRadiusBounds, 15));
+
         }
+    }
+
+    public static double metersToDegrees(double distanceInMeters) {
+        return distanceInMeters / 111320;
     }
 
     public void launchViewMode(View view) {
