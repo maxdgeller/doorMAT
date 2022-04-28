@@ -44,7 +44,6 @@ public class MapActivity extends DrawerBaseActivity implements OnMapReadyCallbac
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_map);
 
@@ -66,10 +65,11 @@ public class MapActivity extends DrawerBaseActivity implements OnMapReadyCallbac
 
     @Override
     public void onMapReady(@NonNull GoogleMap googleMap) {
+
+        LocationApplication.updateCircles(googleMap);
         mGoogleMap = googleMap;
 
         loadCameraLocation();
-        LocationApplication.updateCircles(googleMap);
 
         if ((!googleMap.isMyLocationEnabled()) && (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED)) {
             googleMap.setMyLocationEnabled(true);

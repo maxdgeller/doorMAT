@@ -97,7 +97,7 @@ public class LocationApplication extends Application implements Application.Acti
     /********************** Location variables ************************/
 
     public FusedLocationProviderClient locationClient;
-    public static final HashMap<String, Circle> CIRCLE_MAP = new HashMap<String, Circle>();
+    public static final ConcurrentHashMap<String, Circle> CIRCLE_MAP = new ConcurrentHashMap<String, Circle>();
 
     private static Location mLastLocation = null;
     private static Location locationOfSearch = null;
@@ -596,7 +596,7 @@ public class LocationApplication extends Application implements Application.Acti
         //remove circles that are not in the most recent 'batch' of doormats and add the new ones,
         //unless newDoormats is empty.
         for (String id : CIRCLE_MAP.keySet()) {
-            if (DATABASE_ANCHOR_MAP.get(id) == null) {
+            if (DATABASE_ANCHOR_MAP.get(id) == null || map != MapActivity.getMap()) {
                 Objects.requireNonNull(CIRCLE_MAP.get(id)).remove();
                 CIRCLE_MAP.remove(id);
             }
