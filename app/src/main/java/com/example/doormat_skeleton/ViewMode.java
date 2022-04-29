@@ -367,12 +367,14 @@ public class ViewMode extends AppCompatActivity implements AdapterView.OnItemSel
         TransformableNode tNode = (TransformableNode) arFragment.getTransformationSystem().getSelectedNode();
         if (tNode != null) {
             String[] val = madeModelsReverse.get(tNode.getRenderable());
-            assert val != null;
-            if (choiceType.equals("shape")) {
-                tNode.setRenderable(getRenderable(val[0], shapeChoice));
-            }
-            if (choiceType.equals("color")) {
-                tNode.setRenderable(getRenderable(colorChoice, val[1]));
+//            assert val != null;
+            if(val != null) {
+                if (choiceType.equals("shape")) {
+                    tNode.setRenderable(getRenderable(val[0], shapeChoice));
+                }
+                if (choiceType.equals("color")) {
+                    tNode.setRenderable(getRenderable(colorChoice, val[1]));
+                }
             }
         }
     }
