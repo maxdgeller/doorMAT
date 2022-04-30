@@ -53,15 +53,4 @@
         app:layout_constraintVertical_bias="0.486"
         app:srcCompat="@drawable/ic_baseline_map_24" />
 
-    <Button
-        android:id="@+id/maptestbtn"
-        android:layout_width="131dp"
-        android:layout_height="101dp"
-        android:layout_marginStart="248dp"
-        android:layout_marginTop="76dp"
-        android:text="add random nearby anchors (remove this button before live demo!!!!!)"
-        android:textSize="8sp"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
-
 </androidx.constraintlayout.widget.ConstraintLayout>

@@ -72,24 +72,24 @@ public class DashboardActivity extends DrawerBaseActivity {
             }
         });
 
-        Button mapTestBtn = findViewById(R.id.maptestbtn);
-
-        mapTestBtn.setOnClickListener(view -> {
-            Random rand = new Random();
-            StoreManager storeManager = new StoreManager();
-            Location location = LocationApplication.getLastLocation();
-            for (int i = 0; i < 50; i++) {
-                double lat = location.getLatitude() + (((rand.nextDouble()*2) - 1) * MapActivity.metersToDegrees(LocationApplication.SEARCH_RADIUS));
-                double lng = location.getLongitude() + (((rand.nextDouble()*2) - 1) * MapActivity.metersToDegrees(LocationApplication.SEARCH_RADIUS));
-                storeManager.storeDoormat(this, String.valueOf(i), "black", "sphere", lat, lng, "test_radius");
-            }
-            for (int i = 50; i < 200; i++) {
-                double lat = location.getLatitude() + (((rand.nextDouble()*2) - 1) * MapActivity.metersToDegrees(LocationApplication.ON_MAP_RADIUS));
-                double lng = location.getLongitude() + (((rand.nextDouble()*2) - 1) * MapActivity.metersToDegrees(LocationApplication.ON_MAP_RADIUS));
-                storeManager.storeDoormat(this, String.valueOf(i), "black", "sphere", lat, lng, "test_radius");
-            }
-            LocationApplication.setLocationOfSearch(null);
-            mapTestBtn.setVisibility(View.GONE);
-        });
+//        Button mapTestBtn = findViewById(R.id.maptestbtn);
+//
+//        mapTestBtn.setOnClickListener(view -> {
+//            Random rand = new Random();
+//            StoreManager storeManager = new StoreManager();
+//            Location location = LocationApplication.getLastLocation();
+//            for (int i = 0; i < 50; i++) {
+//                double lat = location.getLatitude() + (((rand.nextDouble()*2) - 1) * MapActivity.metersToDegrees(LocationApplication.SEARCH_RADIUS));
+//                double lng = location.getLongitude() + (((rand.nextDouble()*2) - 1) * MapActivity.metersToDegrees(LocationApplication.SEARCH_RADIUS));
+//                storeManager.storeDoormat(this, String.valueOf(i), "black", "sphere", lat, lng, "test_radius");
+//            }
+//            for (int i = 50; i < 200; i++) {
+//                double lat = location.getLatitude() + (((rand.nextDouble()*2) - 1) * MapActivity.metersToDegrees(LocationApplication.ON_MAP_RADIUS));
+//                double lng = location.getLongitude() + (((rand.nextDouble()*2) - 1) * MapActivity.metersToDegrees(LocationApplication.ON_MAP_RADIUS));
+//                storeManager.storeDoormat(this, String.valueOf(i), "black", "sphere", lat, lng, "test_radius");
+//            }
+//            LocationApplication.setLocationOfSearch(null);
+//            mapTestBtn.setVisibility(View.GONE);
+//        });
     }
 }

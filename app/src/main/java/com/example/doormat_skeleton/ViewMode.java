@@ -380,7 +380,9 @@ public class ViewMode extends AppCompatActivity implements AdapterView.OnItemSel
     }
 
     public void onClickBack(View view) {
-        this.onBackPressed();
+        Intent intent = new Intent(ViewMode.this, MapActivity.class);
+        startActivity(intent);
+//        this.onBackPressed();
     }
 
     public void onClickRemove(View view) {

@@ -160,6 +160,7 @@ public class MapActivity extends DrawerBaseActivity implements OnMapReadyCallbac
 //        LatLng latLng = new LatLng(location.getLatitude(), location.getLongitude());
         Intent intent = new Intent(MapActivity.this, ViewMode.class);
         startActivity(intent);
+//        finish();
 //        startActivityForResult(i, VIEW_MODE_REQUEST_CODE);
     }
 
